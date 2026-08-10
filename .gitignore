@@ -1,0 +1,23 @@
+# ⚠ HACKATHON RULE — .kiro MUST NOT be excluded here or anywhere.
+# "Participants must not exclude the .kiro directory, or any of its contents,
+#  through .gitignore or similar repository settings."
+# "Failure to include the .kiro directory, or intentionally concealing relevant
+#  Kiro materials, may result in disqualification."
+# Do not add a .kiro rule to this file. Ever.
+
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# Local run artefacts. NOTE: the seeded demo corpus under fixtures/ and
+# demo-pages/ is committed on purpose — judges need it to run the project.
+elenchus.db
+elenchus.db-*
+pages/
+sources/
+ingests/
+index.md
+*.log
+.DS_Store
