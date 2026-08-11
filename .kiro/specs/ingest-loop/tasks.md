@@ -65,8 +65,8 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 9. Record
 
-- [ ] **9.1** Write `ingests/<timestamp>-<slug>.md`: source, candidates + reasons, decisions + reasoning, pages changed, rejected edits → **AC-5.1**
-- [ ] **9.2** Readable as a file without running the app → **AC-5.2**
+- [x] **9.1** Write `ingests/<timestamp>-<slug>.md`: source, candidates + reasons, decisions + reasoning, pages changed, rejected edits → **AC-5.1**
+- [x] **9.2** Readable as a file without running the app → **AC-5.2**
 
 > The ingest record is not logging. It is the artefact that makes the app's judgement inspectable, and it is what gets shown in the demo video and quoted in the writeup. Write it as something a person reads.
 
