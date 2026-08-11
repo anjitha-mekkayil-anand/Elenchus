@@ -91,12 +91,20 @@ export function applyEdits(edits: Edit[]): ApplyResult {
     pageContents.set(slug, content!);
   }
 
-  // Step 4: Write atomically — write to .tmp, then rename
-  // If any write fails, roll back all .tmp files
+  // Step 4: Write atomically — write to .tmp, then rename.
+  // If any rename fails, restore every page already renamed to its original
+  // state (AC-4.5: all edits or none — partial application must not be possible).
   const pagesDir = resolve(getBaseDir(), "pages");
   const tmpFiles: string[] = [];
 
+  // Capture original state of each target page BEFORE any rename
+  const originals = new Map<string, string | null>(); // slug → content (null = did not exist)
+  for (const [slug] of pageContents) {
+    originals.set(slug, readPage(slug));
+  }
+
   try {
+    // Write all .tmp files first
     for (const [slug, content] of pageContents) {
       const targetPath = resolve(pagesDir, `${slug}.md`);
       const tmpPath = targetPath + ".tmp";
@@ -104,14 +112,50 @@ export function applyEdits(edits: Edit[]): ApplyResult {
       tmpFiles.push(tmpPath);
     }
 
-    // All temp files written successfully — now rename atomically
-    const written: Array<{ slug: string; path: string }> = [];
-    for (const [slug, _content] of pageContents) {
-      const targetPath = resolve(pagesDir, `${slug}.md`);
-      const tmpPath = targetPath + ".tmp";
-      renameSync(tmpPath, targetPath);
-      written.push({ slug, path: targetPath });
+    // Rename loop — track which pages were successfully renamed
+    const renamed: string[] = []; // slugs that completed rename
+    try {
+      for (const [slug] of pageContents) {
+        const targetPath = resolve(pagesDir, `${slug}.md`);
+        const tmpPath = targetPath + ".tmp";
+        renameSync(tmpPath, targetPath);
+        renamed.push(slug);
+      }
+    } catch (renameErr) {
+      // Rename failed partway — roll back pages already renamed
+      for (const slug of renamed) {
+        const targetPath = resolve(pagesDir, `${slug}.md`);
+        const original = originals.get(slug) ?? null;
+        try {
+          if (original === null) {
+            // Page did not exist before — delete the file we created
+            unlinkSync(targetPath);
+          } else {
+            // Page existed — restore original content
+            writeFileSync(targetPath, original, "utf-8");
+          }
+        } catch {
+          // Best effort rollback
+        }
+      }
+      // Clean up remaining .tmp files
+      for (const tmpPath of tmpFiles) {
+        try {
+          if (existsSync(tmpPath)) {
+            unlinkSync(tmpPath);
+          }
+        } catch {
+          // Best effort cleanup
+        }
+      }
+      throw renameErr;
     }
+
+    // All renames succeeded
+    const written: Array<{ slug: string; path: string }> = renamed.map((slug) => ({
+      slug,
+      path: resolve(pagesDir, `${slug}.md`),
+    }));
 
     // Step 5: Update page registry for each written page (task 4.1)
     for (const [slug, content] of pageContents) {

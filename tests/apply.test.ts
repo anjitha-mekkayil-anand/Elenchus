@@ -134,6 +134,34 @@ describe("applyEdits: atomic write (task 8.1)", () => {
     expect(result.rejected).toHaveLength(0);
     expect(result.indexRebuilt).toBe(false);
   });
+
+  it("rolls back first page if rename fails on second page (AC-4.5)", () => {
+    // Set up first page with known content
+    const originalContentA = "# Page A\n\nOriginal A content.\n";
+    writeFileSync(join(tmpDir, "pages", "aaa.md"), originalContentA, "utf-8");
+    upsertPage("aaa", "Page A", "Original A content.");
+
+    // For the second page, create a NON-EMPTY DIRECTORY at the target path.
+    // renameSync cannot rename a file over a non-empty directory, so it will throw.
+    const bTargetPath = join(tmpDir, "pages", "bbb.md");
+    mkdirSync(bTargetPath, { recursive: true });
+    writeFileSync(join(bTargetPath, "blocker"), "x", "utf-8");
+
+    const edits: Edit[] = [
+      { page: "aaa", anchor: "# Page A", insertion: "Added to A." },
+      { page: "bbb", anchor: "(new page)", insertion: "# Page B\n\nNew B." },
+    ];
+
+    // The apply should throw because renaming over a non-empty dir fails
+    expect(() => applyEdits(edits)).toThrow();
+
+    // AC-4.5: First page must be rolled back to its ORIGINAL content
+    const contentA = readFileSync(join(tmpDir, "pages", "aaa.md"), "utf-8");
+    expect(contentA).toBe(originalContentA);
+
+    // No .tmp files left behind
+    expect(existsSync(join(tmpDir, "pages", "aaa.md.tmp"))).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
