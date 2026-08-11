@@ -52,9 +52,9 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 7. Verify — the invariant
 
-- [ ] **7.1** Deterministic check: post-edit content contains pre-edit content as a subsequence → **AC-4.2**
-- [ ] **7.2** Rejected edits recorded, ingest **continues** → *the deliberate asymmetry in `design.md`*
-- [ ] **7.3** Unit tests, adversarial: an edit that truncates, one that reorders, one that "fixes" a typo, one that rewrites a heading. **All four must be rejected.**
+- [x] **7.1** Deterministic check: post-edit content contains pre-edit content as a subsequence → **AC-4.2**
+- [x] **7.2** Rejected edits recorded, ingest **continues** → *the deliberate asymmetry in `design.md`*
+- [x] **7.3** Unit tests, adversarial: an edit that truncates, one that reorders, one that "fixes" a typo, one that rewrites a heading. **All four must be rejected.**
   - *Satisfies **AC-4.1**, the hard invariant. **Do not move past section 7 until 7.3 is green.** Every later feature writes through this gate; if it leaks, it leaks everywhere and silently.*
 
 ## 8. Apply
