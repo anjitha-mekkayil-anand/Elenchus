@@ -72,7 +72,7 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 10. Prove the loop
 
-- [ ] **10.1** Seed 3–4 short pages by hand as a starting base
+- [x] **10.1** Seed 3–4 short pages by hand as a starting base
 - [ ] **10.2** Ingest a real source that **should** weave → confirm it wove, did not create
 - [ ] **10.3** Ingest a real source on a genuinely new topic → confirm it created, and recorded why it rejected the candidates
 - [ ] **10.4** Re-ingest 10.2's source → confirm no-op → **AC-6.1**
