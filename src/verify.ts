@@ -39,30 +39,49 @@ export interface VerifyResult {
 }
 
 // ---------------------------------------------------------------------------
-// 7.1 — Subsequence check
+// 7.1 — Line-level subsequence check
 // ---------------------------------------------------------------------------
 
 /**
- * Checks whether `pre` is a subsequence of `post`.
+ * Checks whether every non-empty line of `pre` appears verbatim, in order,
+ * in `post`. Lines may be inserted between them — that is the point of
+ * weaving — but no original line may be altered, split, or moved.
  *
- * A subsequence means every character of `pre` appears in `post` in the
- * same order, but not necessarily contiguously. This is the minimal
- * guarantee that nothing was deleted or reordered.
+ * This is LINE-level, not character-level. A character-level check leaks
+ * because appended text can supply characters needed to reconstruct
+ * destroyed content.
+ *
+ * No normalisation, no trimming, no whitespace collapsing: a reflow is
+ * a rewrite.
  *
  * This is deterministic code — no model call, no heuristic.
  */
 export function isSubsequence(pre: string, post: string): boolean {
-  let pi = 0; // pointer into pre
-  let qi = 0; // pointer into post
+  const preLines = pre.split("\n");
+  const postLines = post.split("\n");
 
-  while (pi < pre.length && qi < post.length) {
-    if (pre[pi] === post[qi]) {
+  let pi = 0; // pointer into preLines
+  let qi = 0; // pointer into postLines
+
+  while (pi < preLines.length && qi < postLines.length) {
+    // Skip empty lines in pre — they carry no content to protect
+    if (preLines[pi] === "") {
+      pi++;
+      continue;
+    }
+
+    if (preLines[pi] === postLines[qi]) {
       pi++;
     }
     qi++;
   }
 
-  return pi === pre.length;
+  // Skip any trailing empty lines in pre
+  while (pi < preLines.length && preLines[pi] === "") {
+    pi++;
+  }
+
+  return pi === preLines.length;
 }
 
 // ---------------------------------------------------------------------------

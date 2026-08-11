@@ -1,7 +1,7 @@
 /**
  * Unit tests for section 7 (Verify — the invariant) — tasks 7.1–7.3.
  *
- * 7.1: Deterministic subsequence check.
+ * 7.1: Deterministic LINE-LEVEL subsequence check.
  * 7.2: Rejected edits recorded, ingest continues.
  * 7.3: Adversarial cases — truncate, reorder, "fix" typo, rewrite heading.
  *      All four MUST be rejected.
@@ -19,44 +19,76 @@ import {
 import type { Edit } from "../src/plan.js";
 
 // ---------------------------------------------------------------------------
-// 7.1 — isSubsequence
+// 7.1 — isSubsequence (line-level)
 // ---------------------------------------------------------------------------
 
-describe("isSubsequence (task 7.1)", () => {
+describe("isSubsequence (task 7.1, line-level)", () => {
   it("empty string is a subsequence of anything", () => {
     expect(isSubsequence("", "hello")).toBe(true);
     expect(isSubsequence("", "")).toBe(true);
   });
 
-  it("identical strings are subsequences", () => {
-    expect(isSubsequence("abc", "abc")).toBe(true);
+  it("identical content is a subsequence", () => {
+    expect(isSubsequence("line one\nline two", "line one\nline two")).toBe(true);
   });
 
-  it("detects a valid subsequence (non-contiguous)", () => {
-    expect(isSubsequence("ace", "abcde")).toBe(true);
-  });
-
-  it("detects a valid subsequence (contiguous substring)", () => {
-    expect(isSubsequence("bcd", "abcde")).toBe(true);
-  });
-
-  it("rejects when characters are missing", () => {
-    expect(isSubsequence("axe", "abcde")).toBe(false);
-  });
-
-  it("rejects when order is wrong", () => {
-    expect(isSubsequence("ba", "abc")).toBe(false);
-  });
-
-  it("handles multiline content", () => {
+  it("detects a valid subsequence (lines interleaved)", () => {
     const pre = "line one\nline two\nline three";
     const post = "line one\nnew stuff\nline two\nmore\nline three\nend";
     expect(isSubsequence(pre, post)).toBe(true);
   });
 
-  it("rejects when a line is removed from multiline content", () => {
+  it("rejects when a line is removed", () => {
     const pre = "line one\nline two\nline three";
     const post = "line one\nline three"; // line two removed
+    expect(isSubsequence(pre, post)).toBe(false);
+  });
+
+  it("rejects when lines are reordered", () => {
+    const pre = "alpha\nbeta";
+    const post = "beta\nalpha";
+    expect(isSubsequence(pre, post)).toBe(false);
+  });
+
+  it("rejects when a line is altered", () => {
+    const pre = "Use low heat.";
+    const post = "Use gentle heat.";
+    expect(isSubsequence(pre, post)).toBe(false);
+  });
+
+  it("accepts when lines are only appended", () => {
+    const pre = "first\nsecond";
+    const post = "first\nsecond\nthird";
+    expect(isSubsequence(pre, post)).toBe(true);
+  });
+
+  it("accepts when lines are only inserted between existing", () => {
+    const pre = "# Title\nContent.";
+    const post = "# Title\nNew paragraph.\nContent.";
+    expect(isSubsequence(pre, post)).toBe(true);
+  });
+
+  it("ignores empty lines in pre (they carry no content)", () => {
+    const pre = "line one\n\nline two\n";
+    const post = "line one\nline two";
+    expect(isSubsequence(pre, post)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression tests — cases that leaked under character-level check
+// ---------------------------------------------------------------------------
+
+describe("isSubsequence regression — leaked under character-level", () => {
+  it("REJECTS reorder even when appended text supplies the characters", () => {
+    const pre = "alpha\nbeta\n";
+    const post = "beta\nalpha\n\nnotes: beta and alpha both appear again here.\n";
+    expect(isSubsequence(pre, post)).toBe(false);
+  });
+
+  it("REJECTS rewrite even when appended text contains the original words", () => {
+    const pre = "## Method\nUse low heat.\n";
+    const post = "## Method\nUse gentle heat.\n\nLow and slow is the rule: use low heat for stocks, higher for searing.\n";
     expect(isSubsequence(pre, post)).toBe(false);
   });
 });
@@ -222,7 +254,7 @@ describe("adversarial edits — all four MUST be rejected (task 7.3)", () => {
 
   it("REJECTS an edit that 'fixes' a typo", () => {
     // "flavour" → "flavor" — looks helpful but violates the invariant
-    const postEdit = originalPage.replace("flavour", "flavor") +
+    const postEdit = originalPage.replace("Season early for deeper flavour.", "Season early for deeper flavor.") +
       "\nAdded a note about seasoning.\n";
 
     const edit: Edit = {
