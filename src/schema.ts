@@ -73,3 +73,14 @@ export function getDb(): Database.Database {
   }
   return db;
 }
+
+/**
+ * Closes and resets the database connection.
+ * Used in tests to allow a fresh database per test case.
+ */
+export function _resetDb(): void {
+  if (db) {
+    db.close();
+    db = null;
+  }
+}
