@@ -28,7 +28,7 @@ export class AnthropicClient implements ModelClient {
   async complete(req: ModelRequest): Promise<ModelResponse> {
     const message = await this.client.messages.create({
       model: this.model,
-      max_tokens: 4096,
+      max_tokens: 16000,
       system: req.system,
       messages: req.messages.map((m) => ({
         role: m.role,
