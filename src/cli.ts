@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { ensureLayout } from "./layout.js";
 import { ensureSchema } from "./schema.js";
+import { acceptSource, isRejection } from "./accept.js";
 
 const program = new Command();
 
@@ -14,18 +15,42 @@ program
   .command("ingest <pathOrUrl>")
   .description("Ingest a source (local file path or URL) into the knowledge base.")
   .option("--force", "Force re-ingest even if source was already processed")
-  .action((pathOrUrl: string, opts: { force?: boolean }) => {
+  .action(async (pathOrUrl: string, opts: { force?: boolean }) => {
     // Ensure on-disk layout and schema exist before any operation
     ensureLayout();
     ensureSchema();
 
-    console.error(
-      `[elenchus] ingest: not yet implemented.\n` +
-      `  source: ${pathOrUrl}\n` +
-      `  force:  ${opts.force ?? false}\n` +
-      `  → This is a stub. Implementation arrives in tasks 2.x.`
-    );
-    process.exit(1);
+    const outcome = await acceptSource(pathOrUrl, { force: opts.force });
+
+    if (isRejection(outcome)) {
+      console.error(`[elenchus] rejected: ${outcome.reason}`);
+      process.exit(1);
+    }
+
+    if (outcome.alreadyIngested && !outcome.forced) {
+      console.log(
+        `[elenchus] already ingested (source #${outcome.sourceId}, hash ${outcome.hash.slice(0, 8)}…). ` +
+        `Use --force to re-ingest.`
+      );
+      process.exit(0);
+    }
+
+    if (outcome.forced) {
+      console.log(
+        `[elenchus] forced re-ingest of source #${outcome.sourceId} (hash ${outcome.hash.slice(0, 8)}…).`
+      );
+    } else {
+      console.log(
+        `[elenchus] accepted source #${outcome.sourceId}\n` +
+        `  origin:   ${outcome.origin}\n` +
+        `  file:     sources/${outcome.filename}\n` +
+        `  hash:     ${outcome.hash.slice(0, 8)}…\n` +
+        `  size:     ${outcome.byteLength} bytes`
+      );
+    }
+
+    // TODO: sections 3–9 (retrieve, decide, plan, verify, apply, record)
+    console.log(`[elenchus] accept complete. Remaining stages not yet implemented.`);
   });
 
 program

@@ -16,11 +16,11 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 2. Accept
 
-- [ ] **2.1** Read plain text / markdown from a path → **AC-1.1**
-- [ ] **2.2** Fetch a URL and extract readable text → **AC-1.2**
-- [ ] **2.3** Reject empty / no-extractable-text with a stated reason, writing nothing → **AC-1.3**
-- [ ] **2.4** Persist raw extracted text to `sources/`, write-once → **AC-1.4**
-- [ ] **2.5** Content hash → duplicate detection; `--force` flag records a forced run → **AC-6.1, AC-6.2**
+- [x] **2.1** Read plain text / markdown from a path → **AC-1.1**
+- [x] **2.2** Fetch a URL and extract readable text → **AC-1.2**
+- [x] **2.3** Reject empty / no-extractable-text with a stated reason, writing nothing → **AC-1.3**
+- [x] **2.4** Persist raw extracted text to `sources/`, write-once → **AC-1.4**
+- [x] **2.5** Content hash → duplicate detection; `--force` flag records a forced run → **AC-6.1, AC-6.2**
 
 > Ship 2.1 and 2.4 before anything else. Everything downstream needs a source on disk to work against.
 
