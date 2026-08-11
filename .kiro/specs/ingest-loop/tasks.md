@@ -46,9 +46,9 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 6. Plan
 
-- [ ] **6.1** Emit edits as `{ page, anchor, insertion }` — additions only, nothing applied yet
-- [ ] **6.2** **Include the full current page content in the weave prompt** — the prompt-construction rule from `design.md`; omitting it is the direct cause of rewrite-instead-of-weave
-- [ ] **6.3** Citation of the source attached to added material → **AC-4.3**
+- [x] **6.1** Emit edits as `{ page, anchor, insertion }` — additions only, nothing applied yet
+- [x] **6.2** **Include the full current page content in the weave prompt** — the prompt-construction rule from `design.md`; omitting it is the direct cause of rewrite-instead-of-weave
+- [x] **6.3** Citation of the source attached to added material → **AC-4.3**
 
 ## 7. Verify — the invariant
 
