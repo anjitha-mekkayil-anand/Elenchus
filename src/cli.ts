@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { ensureLayout } from "./layout.js";
 import { ensureSchema } from "./schema.js";
 import { acceptSource, isRejection } from "./accept.js";
+import { syncPagesFromDisk, rebuildIndex } from "./pages.js";
 
 const program = new Command();
 
@@ -61,11 +62,9 @@ program
     ensureLayout();
     ensureSchema();
 
-    console.error(
-      `[elenchus] index: not yet implemented.\n` +
-      `  → This is a stub. Implementation arrives in task 8.2.`
-    );
-    process.exit(1);
+    syncPagesFromDisk();
+    rebuildIndex();
+    console.log("[elenchus] index.md rebuilt from current pages.");
   });
 
 program.parse();

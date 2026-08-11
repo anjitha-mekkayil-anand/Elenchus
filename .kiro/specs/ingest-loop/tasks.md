@@ -59,9 +59,9 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 8. Apply
 
-- [ ] **8.1** Write all edits, or none → **AC-4.5**
-- [ ] **8.2** Rebuild `index.md` from current pages → **AC-4.4**
-- [ ] **8.3** Retry-once-then-fail on unparseable model output
+- [x] **8.1** Write all edits, or none → **AC-4.5**
+- [x] **8.2** Rebuild `index.md` from current pages → **AC-4.4**
+- [x] **8.3** Retry-once-then-fail on unparseable model output
 
 ## 9. Record
 
