@@ -12,7 +12,7 @@
  */
 
 import type { ModelClient, ModelRequest } from "./model/types.js";
-import { formatIndexForModel } from "./pages.js";
+import { formatIndexForModel, listPages } from "./pages.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,9 +23,17 @@ export interface Candidate {
   reason: string;
 }
 
+export interface DroppedCandidate {
+  slug: string;
+  reason: string;
+  dropReason: string;
+}
+
 export interface RetrieveResult {
-  /** Candidate pages the model identified as relevant. */
+  /** Candidate pages the model identified as relevant (validated against index). */
   candidates: Candidate[];
+  /** Candidates dropped because their slug does not exist in the page index. */
+  dropped: DroppedCandidate[];
   /** True when no candidates were returned — the new-topic path. */
   newTopic: boolean;
   /** Raw model response for the ingest record. */
@@ -93,10 +101,28 @@ export async function retrieve(
   const response = await model.complete(req);
   const rawResponse = response.content;
 
-  const candidates = parseCandidates(rawResponse);
+  const allCandidates = parseCandidates(rawResponse);
+
+  // Validate slugs against the page index — drop any that don't exist
+  const knownSlugs = new Set(listPages().map((p) => p.slug));
+  const candidates: Candidate[] = [];
+  const dropped: DroppedCandidate[] = [];
+
+  for (const c of allCandidates) {
+    if (knownSlugs.has(c.slug)) {
+      candidates.push(c);
+    } else {
+      dropped.push({
+        slug: c.slug,
+        reason: c.reason,
+        dropReason: `Slug "${c.slug}" does not exist in the page index.`,
+      });
+    }
+  }
 
   return {
     candidates,
+    dropped,
     newTopic: candidates.length === 0,
     rawResponse,
   };

@@ -189,6 +189,7 @@ describe("retrieve with candidates (task 4.2)", () => {
     expect(result2.candidates[0].reason).toContain("cooking technique");
     expect(result2.candidates[1].slug).toBe("nutrition");
     expect(result2.newTopic).toBe(false);
+    expect(result2.dropped).toHaveLength(0);
     expect(result2.rawResponse).toBe(modelResponse);
   });
 });
@@ -249,6 +250,79 @@ describe("retrieve with no candidates — new topic (task 4.3)", () => {
     const result = await retrieve(sourceText, replayer);
 
     expect(result.candidates).toHaveLength(0);
+    expect(result.dropped).toHaveLength(0);
+    expect(result.newTopic).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slug validation fix
+// ---------------------------------------------------------------------------
+
+describe("retrieve slug validation", () => {
+  let tmpDir: string;
+  let fixturesDir: string;
+  let originalCwd: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "elenchus-slugval-"));
+    fixturesDir = join(tmpDir, "fixtures");
+    mkdirSync(fixturesDir, { recursive: true });
+    originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    ensureLayout();
+    ensureSchema();
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    _resetDb();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("drops hallucinated slugs that do not exist in the index", async () => {
+    upsertPage("cooking", "Cooking Basics", "Fundamental techniques.");
+
+    // Model returns one real slug and one hallucinated
+    const modelResponse = JSON.stringify([
+      { slug: "cooking", reason: "Relevant to cooking." },
+      { slug: "nonexistent-page", reason: "Hallucinated by the model." },
+    ]);
+    const fake = new FakeModelClient(modelResponse);
+    const recorder = new RecordingClient(fake, fixturesDir);
+
+    const sourceText = "A source that the model misroutes.";
+    await retrieve(sourceText, recorder);
+
+    const replayer = new ReplayClient(fixturesDir);
+    const result = await retrieve(sourceText, replayer);
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].slug).toBe("cooking");
+    expect(result.dropped).toHaveLength(1);
+    expect(result.dropped[0].slug).toBe("nonexistent-page");
+    expect(result.dropped[0].dropReason).toContain("does not exist");
+  });
+
+  it("results in newTopic when all candidates are hallucinated", async () => {
+    upsertPage("cooking", "Cooking Basics", "Fundamental techniques.");
+
+    // Model returns only hallucinated slugs
+    const modelResponse = JSON.stringify([
+      { slug: "made-up-one", reason: "Fake." },
+      { slug: "made-up-two", reason: "Also fake." },
+    ]);
+    const fake = new FakeModelClient(modelResponse);
+    const recorder = new RecordingClient(fake, fixturesDir);
+
+    const sourceText = "All candidates are hallucinated.";
+    await retrieve(sourceText, recorder);
+
+    const replayer = new ReplayClient(fixturesDir);
+    const result = await retrieve(sourceText, replayer);
+
+    expect(result.candidates).toHaveLength(0);
+    expect(result.dropped).toHaveLength(2);
     expect(result.newTopic).toBe(true);
   });
 });
