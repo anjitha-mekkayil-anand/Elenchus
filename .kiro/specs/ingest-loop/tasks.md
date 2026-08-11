@@ -33,9 +33,9 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 4. Retrieve
 
-- [ ] **4.1** Maintain title + one-line summary per page; keep current on write
-- [ ] **4.2** Send the index to the model; get back candidates **with a reason each** → **AC-2.1, AC-2.3**
-- [ ] **4.3** No candidates above threshold → new-topic path, not an error → **AC-2.2**
+- [x] **4.1** Maintain title + one-line summary per page; keep current on write
+- [x] **4.2** Send the index to the model; get back candidates **with a reason each** → **AC-2.1, AC-2.3**
+- [x] **4.3** No candidates above threshold → new-topic path, not an error → **AC-2.2**
 
 ## 5. Decide
 
