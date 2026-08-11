@@ -39,10 +39,10 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 5. Decide
 
-- [ ] **5.1** Per candidate: weave / skip, with reasoning → **AC-3.1**
-- [ ] **5.2** Create a new page only when no candidate can hold the material → **AC-3.2**
-- [ ] **5.3** On create, record the rejected candidates and why → **AC-3.3**
-- [ ] **5.4** Allow one source to weave into several pages in one run → **AC-3.4**
+- [x] **5.1** Per candidate: weave / skip, with reasoning → **AC-3.1**
+- [x] **5.2** Create a new page only when no candidate can hold the material → **AC-3.2**
+- [x] **5.3** On create, record the rejected candidates and why → **AC-3.3**
+- [x] **5.4** Allow one source to weave into several pages in one run → **AC-3.4**
 
 ## 6. Plan
 
