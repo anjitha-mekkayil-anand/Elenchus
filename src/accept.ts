@@ -150,11 +150,6 @@ export function validateContent(text: string): string | null {
     return "Source contains only whitespace — no extractable text.";
   }
 
-  // Minimum meaningful content threshold (at least a short sentence)
-  if (stripped.length < 10) {
-    return `Source too short to be meaningful (${stripped.length} non-whitespace characters). Minimum is 10.`;
-  }
-
   return null; // valid
 }
 

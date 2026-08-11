@@ -24,10 +24,14 @@ describe("validateContent (task 2.3)", () => {
     expect(reason).toContain("whitespace");
   });
 
-  it("rejects content shorter than 10 meaningful characters", () => {
+  it("accepts content with any non-whitespace characters", () => {
+    const reason = validateContent("X is true");
+    expect(reason).toBeNull();
+  });
+
+  it("accepts a very short but real source", () => {
     const reason = validateContent("hi");
-    expect(reason).not.toBeNull();
-    expect(reason).toContain("too short");
+    expect(reason).toBeNull();
   });
 
   it("accepts content with 10+ meaningful characters", () => {
@@ -96,18 +100,16 @@ describe("acceptSource rejection paths (task 2.3)", () => {
     expect(sources).toHaveLength(0);
   });
 
-  it("rejects a file with only a few characters", async () => {
-    const tinyFile = join(tmpDir, "tiny.md");
-    writeFileSync(tinyFile, "hi", "utf-8");
+  it("accepts a very short but real source ('X is true')", async () => {
+    const shortFile = join(tmpDir, "short.md");
+    writeFileSync(shortFile, "X is true", "utf-8");
 
-    const outcome = await acceptSource(tinyFile);
-    expect(isRejection(outcome)).toBe(true);
-    if (isRejection(outcome)) {
-      expect(outcome.reason).toContain("too short");
-    }
+    const outcome = await acceptSource(shortFile);
+    expect(isRejection(outcome)).toBe(false);
 
+    // It should have been persisted to sources/
     const sources = readdirSync(join(tmpDir, "sources"));
-    expect(sources).toHaveLength(0);
+    expect(sources.length).toBeGreaterThan(0);
   });
 
   it("accepts a valid file — does write to sources/", async () => {
