@@ -8,10 +8,10 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 1. Skeleton
 
-- [ ] **1.1** Node + TypeScript project; `tsconfig`, scripts, `.gitignore` (must ignore `.env`, `elenchus.db`, `pages/`, `sources/`, `ingests/` for local runs)
-- [ ] **1.2** CLI entry: `elenchus ingest <path|url>`, `elenchus index`
-- [ ] **1.3** SQLite schema — sources, pages, ingests, edits — with `better-sqlite3`
-- [ ] **1.4** On-disk layout created on first run: `pages/`, `sources/`, `ingests/`, `index.md`
+- [x] **1.1** Node + TypeScript project; `tsconfig`, scripts, `.gitignore` (must ignore `.env`, `elenchus.db`, `pages/`, `sources/`, `ingests/` for local runs)
+- [x] **1.2** CLI entry: `elenchus ingest <path|url>`, `elenchus index`
+- [x] **1.3** SQLite schema — sources, pages, ingests, edits — with `better-sqlite3`
+- [x] **1.4** On-disk layout created on first run: `pages/`, `sources/`, `ingests/`, `index.md`
   - *Satisfies NF-1, NF-4*
 
 ## 2. Accept
