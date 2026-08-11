@@ -74,6 +74,13 @@ If NO candidate can hold the material and a new page is needed:
   "create": {"slug": "<suggested-slug>", "title": "<suggested-title>", "reason": "Why a new page is needed."}
 }`;
 
+const NEW_TOPIC_SYSTEM_PROMPT = `You are the decision stage of a knowledge base called Elenchus.
+
+No existing pages match the new source. Your job: propose a page to hold this material.
+
+Respond with a JSON object (no markdown fencing):
+{"slug": "<short-kebab-case-slug>", "title": "<Human-readable title>", "reason": "Why this page is needed."}`;
+
 function buildUserMessage(
   sourceText: string,
   candidates: Candidate[]
@@ -95,6 +102,16 @@ ${candidateList}
 For each candidate: weave or skip? If none can hold this material, request a new page.`;
 }
 
+function buildNewTopicMessage(sourceText: string): string {
+  return `## New source text
+
+${sourceText}
+
+---
+
+No existing pages match. Propose a slug and title for a new page to hold this material.`;
+}
+
 // ---------------------------------------------------------------------------
 // Decide
 // ---------------------------------------------------------------------------
@@ -103,26 +120,42 @@ For each candidate: weave or skip? If none can hold this material, request a new
  * Runs the decide stage.
  *
  * If candidates are provided, asks the model to decide per candidate.
- * If no candidates (new topic from retrieve), returns a create decision directly.
+ * If no candidates (new topic from retrieve), asks the model to propose
+ * a slug and title for the new page.
  */
 export async function decide(
   sourceText: string,
   candidates: Candidate[],
   model: ModelClient
 ): Promise<DecideResult> {
-  // AC-3.2: If no candidates at all (new topic path), create directly
+  // AC-3.2: If no candidates at all (new topic path), ask model to name the page
   if (candidates.length === 0) {
+    const req: ModelRequest = {
+      task: "decide-new-topic",
+      system: NEW_TOPIC_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: buildNewTopicMessage(sourceText),
+        },
+      ],
+    };
+
+    const response = await model.complete(req);
+    const rawResponse = response.content;
+    const proposal = parseNewTopicProposal(rawResponse);
+
     return {
       decisions: [
         {
           action: "create",
-          suggestedSlug: "",
-          suggestedTitle: "",
-          reason: "No existing pages were retrieved — this is a new topic.",
+          suggestedSlug: proposal.slug,
+          suggestedTitle: proposal.title,
+          reason: proposal.reason,
           rejectedCandidates: [],
         },
       ],
-      rawResponse: "(no candidates — new topic path taken without model call)",
+      rawResponse,
     };
   }
 
@@ -201,4 +234,25 @@ function parseDecisions(raw: string, candidates: Candidate[]): Decision[] {
   }
 
   return results;
+}
+
+/**
+ * Parses the model's response for the new-topic (zero candidates) path.
+ * Expects: {"slug": "...", "title": "...", "reason": "..."}
+ */
+function parseNewTopicProposal(raw: string): { slug: string; title: string; reason: string } {
+  let text = raw.trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+
+  const parsed = JSON.parse(text) as { slug?: string; title?: string; reason?: string };
+
+  if (!parsed.slug || !parsed.title || !parsed.reason) {
+    throw new Error(
+      `Decide (new topic): model must return "slug", "title", and "reason". Got: ${text}`
+    );
+  }
+
+  return { slug: parsed.slug, title: parsed.title, reason: parsed.reason };
 }

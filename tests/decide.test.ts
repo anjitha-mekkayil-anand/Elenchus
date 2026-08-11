@@ -178,7 +178,9 @@ describe("decide: create new page (tasks 5.2, 5.3)", () => {
     expect(createDecision).toBeDefined();
     if (createDecision?.action === "create") {
       expect(createDecision.suggestedSlug).toBe("quantum-computing");
+      expect(createDecision.suggestedSlug.length).toBeGreaterThan(0);
       expect(createDecision.suggestedTitle).toBe("Quantum Computing");
+      expect(createDecision.suggestedTitle.length).toBeGreaterThan(0);
       expect(createDecision.reason).toContain("new topic");
     }
   });
@@ -212,6 +214,10 @@ describe("decide: create new page (tasks 5.2, 5.3)", () => {
     const createDecision = result.decisions.find((d) => d.action === "create");
     expect(createDecision?.action).toBe("create");
     if (createDecision?.action === "create") {
+      expect(createDecision.suggestedSlug).toBe("astronomy");
+      expect(createDecision.suggestedSlug.length).toBeGreaterThan(0);
+      expect(createDecision.suggestedTitle).toBe("Astronomy");
+      expect(createDecision.suggestedTitle.length).toBeGreaterThan(0);
       expect(createDecision.rejectedCandidates).toHaveLength(2);
       expect(createDecision.rejectedCandidates[0].slug).toBe("cooking");
       expect(createDecision.rejectedCandidates[0].reason).toContain("Not about cooking");
@@ -219,19 +225,32 @@ describe("decide: create new page (tasks 5.2, 5.3)", () => {
     }
   });
 
-  it("takes new-topic path directly when no candidates (AC-3.2)", async () => {
-    // No candidates — retrieve returned empty, so decide is called with []
-    const result = await decide(
-      "Something brand new.",
-      [],
-      // model should not be called at all — use a client that would throw
-      { complete: () => { throw new Error("Should not be called"); } } as unknown as ModelClient
-    );
+  it("takes new-topic path with model call when no candidates — returns non-empty slug and title (AC-3.2)", async () => {
+    const modelResponse = JSON.stringify({
+      slug: "quantum-computing",
+      title: "Quantum Computing",
+      reason: "Entirely new topic about quantum mechanics and computation.",
+    });
+
+    const fake = new FakeModelClient(modelResponse);
+    const recorder = new RecordingClient(fake, fixturesDir);
+    const sourceText = "Quantum entanglement is a phenomenon where particles become correlated.";
+
+    // Record
+    await decide(sourceText, [], recorder);
+
+    // Replay
+    const replayer = new ReplayClient(fixturesDir);
+    const result = await decide(sourceText, [], replayer);
 
     expect(result.decisions).toHaveLength(1);
     expect(result.decisions[0].action).toBe("create");
     if (result.decisions[0].action === "create") {
-      expect(result.decisions[0].reason).toContain("new topic");
+      expect(result.decisions[0].suggestedSlug).toBe("quantum-computing");
+      expect(result.decisions[0].suggestedSlug.length).toBeGreaterThan(0);
+      expect(result.decisions[0].suggestedTitle).toBe("Quantum Computing");
+      expect(result.decisions[0].suggestedTitle.length).toBeGreaterThan(0);
+      expect(result.decisions[0].reason).toContain("quantum");
       expect(result.decisions[0].rejectedCandidates).toHaveLength(0);
     }
   });
