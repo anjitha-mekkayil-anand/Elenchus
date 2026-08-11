@@ -14,37 +14,39 @@
  * (design.md, task 3.3, NF-3)
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ModelClient, ModelRequest, ModelResponse } from "./types.js";
+import { hashRequest } from "./recording.js";
 import type { Fixture } from "./recording.js";
 
 export class ReplayClient implements ModelClient {
-  private readonly fixtures: Fixture[];
-  private callIndex = 0;
+  private readonly fixturesByKey: Map<string, Fixture>;
 
   constructor(fixturesDir: string) {
-    const files = readdirSync(fixturesDir)
-      .filter((f) => f.endsWith(".json"))
-      .sort();
+    this.fixturesByKey = new Map();
 
-    this.fixtures = files.map((f) => {
+    const files = readdirSync(fixturesDir)
+      .filter((f) => f.endsWith(".json"));
+
+    for (const f of files) {
       const raw = readFileSync(resolve(fixturesDir, f), "utf-8");
-      return JSON.parse(raw) as Fixture;
-    });
+      const fixture = JSON.parse(raw) as Fixture;
+      const key = hashRequest(fixture.request);
+      this.fixturesByKey.set(key, fixture);
+    }
   }
 
   async complete(req: ModelRequest): Promise<ModelResponse> {
-    if (this.callIndex >= this.fixtures.length) {
+    const key = hashRequest(req);
+    const fixture = this.fixturesByKey.get(key);
+
+    if (!fixture) {
       throw new Error(
-        `ReplayClient: no more fixtures to replay. ` +
-          `Expected call #${this.callIndex + 1} (task: "${req.task}") ` +
-          `but only ${this.fixtures.length} fixture(s) available.`
+        `ReplayClient: no fixture matches request (task: "${req.task}", key: ${key}). ` +
+          `${this.fixturesByKey.size} fixture(s) available.`
       );
     }
-
-    const fixture = this.fixtures[this.callIndex];
-    this.callIndex++;
 
     return fixture.response;
   }

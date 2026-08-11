@@ -1,8 +1,8 @@
 /**
  * Unit tests for tasks 3.1–3.3 (Model interface).
  *
- * - RecordingClient writes a fixture to disk.
- * - ReplayClient replays it without making any network call.
+ * - RecordingClient writes a fixture to disk keyed by request hash.
+ * - ReplayClient replays it by matching on request, not call order.
  * - AnthropicClient refuses to construct without ANTHROPIC_API_KEY.
  */
 
@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { ModelClient, ModelRequest, ModelResponse } from "../src/model/types.js";
 import type { Fixture } from "../src/model/recording.js";
-import { RecordingClient } from "../src/model/recording.js";
+import { RecordingClient, hashRequest } from "../src/model/recording.js";
 import { ReplayClient } from "../src/model/replay.js";
 import { AnthropicClient } from "../src/model/anthropic.js";
 
@@ -64,7 +64,7 @@ describe("RecordingClient (task 3.2)", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("writes a fixture file for each call", async () => {
+  it("writes a fixture file keyed by request hash", async () => {
     const fake = new FakeClient();
     const recorder = new RecordingClient(fake, tmpDir);
 
@@ -80,9 +80,12 @@ describe("RecordingClient (task 3.2)", () => {
     expect(response.content).toBe('response to "retrieve"');
     expect(response.model).toBe("fake-model-1.0");
 
-    // A fixture file should have been written
+    // A fixture file should have been written with the hash as filename
     const files = readdirSync(tmpDir).filter((f) => f.endsWith(".json"));
     expect(files).toHaveLength(1);
+
+    const expectedKey = hashRequest(req);
+    expect(files[0]).toBe(`${expectedKey}.json`);
 
     // The fixture should contain the request and response
     const fixture: Fixture = JSON.parse(
@@ -95,7 +98,7 @@ describe("RecordingClient (task 3.2)", () => {
     expect(fixture.timestamp).toBeTruthy();
   });
 
-  it("writes multiple fixture files for multiple calls", async () => {
+  it("writes multiple fixture files for different requests", async () => {
     const fake = new FakeClient();
     const recorder = new RecordingClient(fake, tmpDir);
 
@@ -146,8 +149,7 @@ describe("ReplayClient (task 3.3)", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("replays a recorded fixture without making network calls", async () => {
-    // First, record a fixture using the FakeClient
+  it("replays a recorded fixture matched by request content", async () => {
     const fake = new FakeClient();
     const recorder = new RecordingClient(fake, tmpDir);
 
@@ -160,78 +162,64 @@ describe("ReplayClient (task 3.3)", () => {
     await recorder.complete(req);
     expect(fake.callCount).toBe(1);
 
-    // Now replay — no network, no calls to the inner client
+    // Replay — matches on request content, no network
     const replayer = new ReplayClient(tmpDir);
     const response = await replayer.complete(req);
 
     expect(response.content).toBe('response to "retrieve"');
     expect(response.model).toBe("fake-model-1.0");
-    // FakeClient was not called again — only once during recording
+    // FakeClient was not called again
     expect(fake.callCount).toBe(1);
   });
 
-  it("replays multiple fixtures in order", async () => {
+  it("matches fixtures by request content regardless of call order", async () => {
     const fake = new FakeClient();
     const recorder = new RecordingClient(fake, tmpDir);
 
-    await recorder.complete({
+    const reqA: ModelRequest = {
       task: "retrieve",
       system: "sys",
       messages: [{ role: "user", content: "first" }],
-    });
-
-    // Small delay to ensure distinct timestamps in filenames
-    await new Promise((r) => setTimeout(r, 5));
-
-    await recorder.complete({
+    };
+    const reqB: ModelRequest = {
       task: "decide",
       system: "sys",
       messages: [{ role: "user", content: "second" }],
-    });
+    };
 
+    // Record A then B
+    await recorder.complete(reqA);
+    await recorder.complete(reqB);
+
+    // Replay in REVERSE order — should still match correctly
     const replayer = new ReplayClient(tmpDir);
 
-    const r1 = await replayer.complete({
-      task: "retrieve",
-      system: "sys",
-      messages: [{ role: "user", content: "first" }],
-    });
-    expect(r1.content).toBe('response to "retrieve"');
-
-    const r2 = await replayer.complete({
-      task: "decide",
-      system: "sys",
-      messages: [{ role: "user", content: "second" }],
-    });
+    const r2 = await replayer.complete(reqB);
     expect(r2.content).toBe('response to "decide"');
+
+    const r1 = await replayer.complete(reqA);
+    expect(r1.content).toBe('response to "retrieve"');
   });
 
-  it("throws when no more fixtures are available", async () => {
+  it("throws with a clear error naming the task when no fixture matches", async () => {
     const fake = new FakeClient();
     const recorder = new RecordingClient(fake, tmpDir);
 
     await recorder.complete({
       task: "retrieve",
       system: "sys",
-      messages: [{ role: "user", content: "only one" }],
+      messages: [{ role: "user", content: "recorded" }],
     });
 
     const replayer = new ReplayClient(tmpDir);
 
-    // First call succeeds
-    await replayer.complete({
-      task: "retrieve",
-      system: "sys",
-      messages: [{ role: "user", content: "only one" }],
-    });
-
-    // Second call fails — no more fixtures
+    // Request something that was never recorded
     await expect(
       replayer.complete({
         task: "decide",
         system: "sys",
-        messages: [{ role: "user", content: "extra" }],
+        messages: [{ role: "user", content: "not recorded" }],
       })
-    ).rejects.toThrow("no more fixtures to replay");
+    ).rejects.toThrow('task: "decide"');
   });
 });
