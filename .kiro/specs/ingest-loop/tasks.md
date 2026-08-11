@@ -26,9 +26,9 @@ Each task names the acceptance criteria it satisfies. A task is done when its cr
 
 ## 3. Model interface
 
-- [ ] **3.1** `ModelClient` interface + `AnthropicClient` → **NF-3**
-- [ ] **3.2** `RecordingClient` wrapper writing request/response pairs to `fixtures/`
-- [ ] **3.3** `ReplayClient` reading from `fixtures/`, no network — **test harness only, never presented as the app running** (see the boundary note in `design.md`)
+- [x] **3.1** `ModelClient` interface + `AnthropicClient` → **NF-3**
+- [x] **3.2** `RecordingClient` wrapper writing request/response pairs to `fixtures/`
+- [x] **3.3** `ReplayClient` reading from `fixtures/`, no network — **test harness only, never presented as the app running** (see the boundary note in `design.md`)
   - *Build 3.2 and 3.3 now, not later — every real call made from today onward becomes a free fixture. The reason is deterministic tests, not avoiding API cost at judging time; judges get a working test credential instead.*
 
 ## 4. Retrieve
