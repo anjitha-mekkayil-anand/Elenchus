@@ -163,7 +163,7 @@ Each section ran through Kiro's spec-to-task cycle: requirements and design, the
 
 ### What that actually bought
 
-Not fewer mistakes. **Mistakes that collided visibly instead of compounding quietly.**
+Mistakes still happened. Specs made them collide visibly instead of compounding quietly.
 
 Three examples, all kept in the record rather than tidied away:
 
