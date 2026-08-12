@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS claims (
 -- status: 'open' | 'resolved'
 -- Supersessions are stored for auditability (AC-8.5) but only contradictions reach the register.
 -- RESTRICT on claim references: nothing deletes a claim (AC-10.3).
+-- UNIQUE(claim_a, claim_b): AC-10.4 reopens rather than duplicates (mechanically enforced).
 CREATE TABLE IF NOT EXISTS contradictions (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   claim_a         INTEGER NOT NULL REFERENCES claims(id) ON DELETE RESTRICT,
@@ -74,7 +75,8 @@ CREATE TABLE IF NOT EXISTS contradictions (
   status          TEXT NOT NULL DEFAULT 'open',           -- 'open' | 'resolved'
   resolved_keep   TEXT,                                    -- 'A' | 'B' | null
   resolved_at     TEXT,                                    -- datetime of resolution
-  resolved_reason TEXT                                     -- user's stated reason (AC-10.2)
+  resolved_reason TEXT,                                    -- user's stated reason (AC-10.2)
+  UNIQUE(claim_a, claim_b)
 );
 `;
 
@@ -102,6 +104,18 @@ export function ensureSchema(): Database.Database {
   const cols = db.pragma("table_info(pages)") as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "content_hash")) {
     db.exec("ALTER TABLE pages ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''");
+  }
+
+  // Migration: add UNIQUE(claim_a, claim_b) index to contradictions if missing
+  // (for databases created before the unique constraint was added).
+  const indexes = db!.pragma("index_list(contradictions)") as Array<{ name: string }>;
+  const hasUniqueIndex = indexes.some((idx) => {
+    const info = db!.pragma(`index_info("${idx.name}")`) as Array<{ name: string }>;
+    const colNames = info.map((c) => c.name);
+    return colNames.includes("claim_a") && colNames.includes("claim_b");
+  });
+  if (!hasUniqueIndex) {
+    db!.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_contradictions_pair ON contradictions(claim_a, claim_b)");
   }
 
   return db;
