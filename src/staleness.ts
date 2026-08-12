@@ -14,6 +14,7 @@
 
 import { resolve } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { getBaseDir } from "./layout.js";
 import { getDb } from "./schema.js";
 import { contentHash } from "./hash.js";
@@ -41,6 +42,26 @@ export interface StalenessResult {
   reExtracted: boolean;
   /** The current content hash of the page on disk. */
   currentHash: string;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Gets or creates the seed-corpus source row. Used when page claims need
+ * attribution but no specific source is responsible (e.g., seeded pages).
+ */
+export function getSeedSourceId(): number {
+  const db = getDb();
+  const seedHash = createHash("sha256").update("seed-corpus").digest("hex");
+  const existing = db.prepare("SELECT id FROM sources WHERE hash = ?").get(seedHash) as { id: number } | undefined;
+  if (existing) return existing.id;
+
+  const result = db.prepare(
+    "INSERT INTO sources (hash, filename, origin, byte_length) VALUES (?, ?, ?, ?)"
+  ).run(seedHash, "seed-corpus", "seed-corpus", 0);
+  return Number(result.lastInsertRowid);
 }
 
 // ---------------------------------------------------------------------------
@@ -115,16 +136,12 @@ export async function ensurePageClaims(
   );
 
   for (const claim of extracted) {
-    // anchor: 'full-page' — page-level extraction doesn't know anchors.
-    // A more granular anchor would require section-aware extraction (future work).
-    insertStmt.run(pageSlug, "full-page", claim.text, sourceId, sourceDate, currentHash);
+    insertStmt.run(pageSlug, claim.anchor, claim.text, sourceId, sourceDate, currentHash);
   }
 
-  // Also update the page's content_hash in the pages table so future checks
-  // can detect staleness against this baseline.
-  db.prepare(
-    "UPDATE pages SET content_hash = ?, updated_at = datetime('now') WHERE slug = ?"
-  ).run(currentHash, pageSlug);
+  // Note: we do NOT update pages.content_hash here.
+  // claims.content_hash is the single source of truth for staleness (Decision 3, section 6).
+  // pages.content_hash is unused — staleness reads from claims rows directly.
 
   // Return the freshly inserted claims.
   const freshClaims = db

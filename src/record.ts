@@ -39,6 +39,29 @@ export interface IngestRecordData {
   pagesChanged: Array<{ slug: string }>;
   /** Edits rejected by the verify gate. */
   rejectedEdits: RejectedEdit[];
+  /** Classified pairs detected during comparison (AC-11.1). Optional for backward compat. */
+  detectedPairs?: DetectedPairRecord[];
+  /** Whether comparison was performed (AC-11.2). */
+  comparisonPerformed?: boolean;
+  /** Pairs demoted by gates — diagnostic info (AC-8.7, AC-8.5). */
+  rejectedPairs?: RejectedPairRecord[];
+}
+
+export interface DetectedPairRecord {
+  sourceClaimText: string;
+  storedClaimText: string;
+  label: string;
+  reasoning: string;
+  falsifier: string;
+  changeEvidence?: string;
+}
+
+export interface RejectedPairRecord {
+  sourceClaimText: string;
+  storedClaimText: string;
+  originalLabel: string;
+  demotedTo: string;
+  reason: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +173,42 @@ function formatRecord(data: IngestRecordData): string {
     }
   }
   lines.push("");
+
+  // Contradiction detection (AC-11.1, AC-11.2)
+  lines.push("## Claim Comparison");
+  lines.push("");
+  if (data.comparisonPerformed === false) {
+    lines.push("No comparison performed (no target pages to compare against).");
+  } else if (data.detectedPairs && data.detectedPairs.length > 0) {
+    lines.push(`Detected **${data.detectedPairs.length}** conflict(s):`);
+    lines.push("");
+    for (const pair of data.detectedPairs) {
+      lines.push(`### ${pair.label.charAt(0).toUpperCase() + pair.label.slice(1)}`);
+      lines.push("");
+      lines.push(`- **Source claim:** ${pair.sourceClaimText}`);
+      lines.push(`- **Stored claim:** ${pair.storedClaimText}`);
+      lines.push(`- **Falsifier:** ${pair.falsifier}`);
+      lines.push(`- **Reasoning:** ${pair.reasoning}`);
+      if (pair.changeEvidence) {
+        lines.push(`- **Change evidence:** "${pair.changeEvidence}"`);
+      }
+      lines.push("");
+    }
+  } else {
+    lines.push("Claims were compared and none conflicted.");
+  }
+  lines.push("");
+
+  // Demoted pairs (diagnostic — gate failures)
+  if (data.rejectedPairs && data.rejectedPairs.length > 0) {
+    lines.push("### Demoted Pairs (Gate Failures)");
+    lines.push("");
+    for (const rp of data.rejectedPairs) {
+      lines.push(`- **${rp.originalLabel} → ${rp.demotedTo}**: "${rp.sourceClaimText}" vs "${rp.storedClaimText}"`);
+      lines.push(`  Reason: ${rp.reason}`);
+    }
+    lines.push("");
+  }
 
   // Rejected edits
   if (data.rejectedEdits.length > 0) {
