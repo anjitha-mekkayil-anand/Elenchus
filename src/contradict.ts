@@ -43,6 +43,26 @@ export interface SupersessionEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Display helper — strip hash prefix from source slugs
+// ---------------------------------------------------------------------------
+
+/**
+ * Strips the leading 8-hex-character prefix from a source slug for display.
+ * e.g., "8271c9cd-food-safety-update" → "food-safety-update"
+ *
+ * The hash prefix ensures uniqueness on disk (from acceptSource) but is
+ * noise in callouts, annotations, and the register. This is a rendering
+ * change only — stored filenames keep their hash.
+ *
+ * If the slug doesn't match the pattern (e.g., "seed-corpus"), return as-is.
+ */
+export function displaySlug(slug: string): string {
+  // Pattern: 8 hex chars followed by a dash, then the rest
+  const match = slug.match(/^[0-9a-f]{8}-(.+)$/);
+  return match ? match[1] : slug;
+}
+
+// ---------------------------------------------------------------------------
 // 5.1 — Contradiction callout (pure function, no I/O)
 // ---------------------------------------------------------------------------
 
@@ -56,8 +76,8 @@ export interface SupersessionEntry {
 export function formatContradictionCallout(entry: ContradictionEntry): string {
   return (
     `> [!warning] Contradiction — ${entry.id} · open\n` +
-    `> **A** — ${entry.claimA.sourceDate} · \`src/${entry.claimA.sourceSlug}\` — ${entry.claimA.text}\n` +
-    `> **B** — ${entry.claimB.sourceDate} · \`src/${entry.claimB.sourceSlug}\` — ${entry.claimB.text}\n` +
+    `> **A** — ${entry.claimA.sourceDate} · \`src/${displaySlug(entry.claimA.sourceSlug)}\` — ${entry.claimA.text}\n` +
+    `> **B** — ${entry.claimB.sourceDate} · \`src/${displaySlug(entry.claimB.sourceSlug)}\` — ${entry.claimB.text}\n` +
     `> ${entry.reasoning}`
   );
 }
@@ -91,7 +111,7 @@ export function formatContradictionId(numericId: number): string {
  * claim's anchor region. (Claims may span multiple lines per design.md.)
  */
 export function formatSupersessionAnnotation(entry: SupersessionEntry): string {
-  return `*superseded ${entry.supersessionDate} by \`src/${entry.sourceSlug}\`*`;
+  return `*superseded ${entry.supersessionDate} by \`src/${displaySlug(entry.sourceSlug)}\`*`;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,8 +165,8 @@ export function addToRegister(entry: ContradictionEntry): void {
 export function formatRegisterEntry(entry: ContradictionEntry): string {
   return (
     `### ${entry.id} — open\n\n` +
-    `- **A** — ${entry.claimA.sourceDate} · \`src/${entry.claimA.sourceSlug}\` — ${entry.claimA.text}\n` +
-    `- **B** — ${entry.claimB.sourceDate} · \`src/${entry.claimB.sourceSlug}\` — ${entry.claimB.text}\n` +
+    `- **A** — ${entry.claimA.sourceDate} · \`src/${displaySlug(entry.claimA.sourceSlug)}\` — ${entry.claimA.text}\n` +
+    `- **B** — ${entry.claimB.sourceDate} · \`src/${displaySlug(entry.claimB.sourceSlug)}\` — ${entry.claimB.text}\n` +
     `- **Reasoning:** ${entry.reasoning}`
   );
 }

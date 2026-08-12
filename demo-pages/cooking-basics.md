@@ -8,4 +8,4 @@ There are three primary methods of heat transfer in cooking: conduction (direct 
 
 ## Timing
 
-Most vegetables cook in 5–12 minutes depending on density. Root vegetables take longer than leafy greens. Proteins need internal temperature verification rather than time alone.
+Most vegetables cook in 5–12 minutes depending on density. Root vegetables take longer than leafy greens. Proteins need internal temperature verification rather than time alone. The recommended safe internal temperature for poultry is 82 °C.
