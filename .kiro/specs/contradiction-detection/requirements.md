@@ -49,8 +49,11 @@ The orphan note (spec 1) makes a base that grows without understanding. The sile
 
 ### Extracting claims
 
-- **AC-7.1** — WHEN material is written to a page, THE SYSTEM SHALL extract the discrete factual claims that material asserts, and SHALL store each with its source identifier and the source's date.
-- **AC-7.2** — THE SYSTEM SHALL record, for each stored claim, the page and the location within that page where it is asserted.
+- **AC-7.1** — WHEN a source is accepted, THE SYSTEM SHALL extract the discrete factual claims that source asserts, each carrying the source identifier and the source's date, and SHALL NOT bind them to any page.
+- **AC-7.2** — WHEN material is written to a page, THE SYSTEM SHALL persist the claims that material asserts, bound to the page, the location within it, and the page's content hash **as written**.
+
+> **AC-7.1 and AC-7.2 are two different extractions and were one until 2026-08-12.** They were fused in the first draft, which put page binding on claims at a point in the pipeline where no page had been written yet. The practical damage was subtle: the only hash available at that point is the *pre-edit* one, so every page would have failed AC-7.4's staleness check on the very next ingest and been re-extracted — converting the flat cost that justified extract-at-write-time into the per-ingest cost the design had rejected, with nothing visibly wrong. **Source claims are unbound and feed this ingest's comparison; page claims are bound and feed future ingests' comparisons.**
+
 - **AC-7.3** — WHERE material asserts nothing checkable — opinion, description, instruction, question — THE SYSTEM SHALL store no claim for it.
 - **AC-7.4** — IF a page's content has changed outside the application, THEN THE SYSTEM SHALL re-extract that page's claims before using them in a comparison.
 

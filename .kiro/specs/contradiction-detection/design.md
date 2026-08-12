@@ -14,18 +14,28 @@ Spec 1's pipeline, with two stages inserted between Decide and Plan:
 [3] Decide ───── target pages chosen
    │
    ▼
-[3a] Extract ─── claims asserted by the source            (AC-7.1)
+[3a] Extract ─── claims asserted by the source, UNBOUND   (AC-7.1)
    │
    ▼
-[3b] Compare ─── source claims × stored claims on targets (AC-8.x)
+[3b] Compare ─── source claims × stored page claims        (AC-8.x)
    │
    ▼
 [4] Plan ─────── edits now also carry both-views blocks
                  and supersession annotations              (AC-9.x)
 [5] Verify
 [6] Apply
+   │
+   ▼
+[6a] Persist ─── page claims bound to page + anchor +
+                 content hash as written                   (AC-7.2)
+   │
+   ▼
 [7] Record ───── + register entry                          (AC-9.4, AC-11.x)
 ```
+
+> **`[3a]` and `[6a]` are two extractions, not one moved around.** `[3a]` asks *what does this source assert* and produces unbound claims used only by this ingest's comparison. `[6a]` asks *what does this page now assert, and where* and produces the bound rows that future ingests compare against.
+>
+> Fusing them is the obvious simplification and it is wrong: at `[3a]` there is no page and no anchor, and the only hash available is the pre-edit one — which is stale the moment `[6]` runs, so every page fails AC-7.4's check on the next ingest and gets re-extracted anyway. The cost model then matches the compare-time column of the table below, which is the option this design rejected. Nothing about it looks broken; it is just quietly paying the price it was built to avoid.
 
 **It goes after Decide, not after Retrieve.** Comparison needs to know which pages are actually being written to. Retrieval deliberately over-fetches — AC-2.3 requires it to surface pages it considered and rejected — and comparing against rejected candidates would generate conflicts on pages this ingest is not touching, which is noise the register cannot absorb (NF-8).
 

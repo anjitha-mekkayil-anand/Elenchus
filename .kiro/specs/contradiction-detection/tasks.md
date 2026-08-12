@@ -10,21 +10,21 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 1. Schema and storage
 
-- [ ] **1.1** 🔧 Add `claims` table to SQLite schema: `id`, `page`, `anchor`, `text`, `source_id`, `source_date`, `page_hash` → *AC-7.1, AC-7.2*
+- [ ] **1.1** 🔧 Add `claims` table to SQLite schema: `id`, `page`, `anchor`, `text`, `source_id`, `source_date`, `page_hash` → *AC-7.2*
 - [ ] **1.2** 🔧 Add `contradictions` table to SQLite schema: `id`, `claim_a`, `claim_b`, `kind`, `reasoning`, `status`, `resolved_keep`, `resolved_at`, `resolved_reason` → *AC-8.8, AC-10.2*
 - [ ] **1.3** 🔧 Create `contradictions.md` in on-disk layout (ensureLayout). Structure: open section first, then resolved section → *AC-9.4, NF-6*
-- [ ] **1.4** 🔧 Add `page_hash` column to the existing `pages` table (or verify it already stores the hash needed for AC-7.4)
+- [ ] **1.4** 🔧 Add `page_hash` column to the existing `pages` table. The current schema (`src/schema.ts`) has `slug`, `title`, `summary`, `created_at`, `updated_at` but no hash. Add `content_hash TEXT NOT NULL DEFAULT ''` — updated by Apply whenever a page is written. Required for AC-7.4's staleness check.
 
 ## 2. Extract — claims from source material
 
-- [ ] **2.1** 🤖 `extractClaims(text, sourceId, sourceDate, model)` → array of `{ text, anchor }`. Send material to model, get back discrete factual claims at assertion granularity → *AC-7.1*
+- [ ] **2.1** 🤖 `extractClaims(text, sourceId, sourceDate, model)` → array of `{ text }`. Send material to model, get back discrete factual claims at assertion granularity → *AC-7.1*
 - [ ] **2.2** 🤖 Prompt construction: instruct the model to return nothing for opinion, description, instruction, question → *AC-7.3*
-- [ ] **2.3** 🔧 Store extracted claims in SQLite with page slug, anchor, source_id, source_date, and the page's current content hash → *AC-7.2*
+- [ ] **2.3** 🔧 Return source claims from Extract **unbound** — source_id and source_date only, no page, no anchor, no hash. Held in memory for the Compare stage. → *AC-7.1*
 - [ ] **2.4** 🔧 Unit test: a source that asserts nothing checkable produces zero claims → *AC-7.3*
 
 ## 3. Staleness — re-extract on hash mismatch
 
-- [ ] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `page_hash` on claims → *AC-7.4*
+- [ ] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `page_hash` on **page claims** → *AC-7.4*
 - [ ] **3.2** 🤖 If mismatch, re-extract that page's claims from the current file content before proceeding → *AC-7.4*
 - [ ] **3.3** 🔧 Unit test: simulate a hand-edit (modify file, leave DB stale), verify re-extraction is triggered
 
@@ -51,13 +51,14 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 6. Wire into the pipeline
 
-- [ ] **6.1** 🔧 Insert Extract stage between Decide and Plan in `cli.ts`: extract claims from source text after decide, before plan → *AC-7.1, design.md pipeline*
-- [ ] **6.2** 🔧 Insert Compare stage between Extract and Plan: compare source claims against stored claims on target pages → *AC-8.1, design.md pipeline*
+- [ ] **6.1** 🔧 Insert Extract stage between Decide and Plan in `cli.ts`: extract source claims (unbound) after decide, before plan → *AC-7.1, design.md pipeline*
+- [ ] **6.2** 🔧 Insert Compare stage between Extract and Plan: compare source claims against stored **page** claims on target pages → *AC-8.1, design.md pipeline*
 - [ ] **6.3** 🔧 Modify Plan stage: when contradictions or supersessions are detected, include callout/annotation edits in the planned edits alongside weave edits → *AC-9.1, AC-9.3, AC-9.5*
 - [ ] **6.4** 🔧 After Apply, write register entries and store contradictions in SQLite → *AC-9.4*
-- [ ] **6.5** 🔧 Extend the ingest record to name each detected pair with classification and reasoning → *AC-11.1*
-- [ ] **6.6** 🔧 Extend the ingest record: when no contradictions detected, state explicitly that claims were compared and none conflicted → *AC-11.2*
-- [ ] **6.7** 🔧 Roll back the whole ingest if register write fails after pages are written → *AC-4.5, design.md failure handling*
+- [ ] **6.5** 🔧 After Apply, persist **page claims** bound to page slug, anchor, and the page's content hash **as written**. These are the rows future ingests compare against. → *AC-7.2, design.md stage [6a]*
+- [ ] **6.6** 🔧 Extend the ingest record to name each detected pair with classification and reasoning → *AC-11.1*
+- [ ] **6.7** 🔧 Extend the ingest record: when no contradictions detected, state explicitly that claims were compared and none conflicted → *AC-11.2*
+- [ ] **6.8** 🔧 Roll back the whole ingest if register write fails after pages are written → *AC-4.5, design.md failure handling*
 
 ## 7. Resolution
 
@@ -104,6 +105,6 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 1. **Section 8** (reopen) — complex and AC-10.4 is deferrable to post-deadline
 2. **10.3–10.5** (supersession and refinement corpus proofs) — contradiction is the headline
-3. **3.2** (re-extraction on stale hash) — matters only for hand-edited pages
+3. **3.1 and 3.2 together, or neither** — a half-cut (detect staleness but reason from stale claims anyway) is the worst of the three states: it is the confident-nonsense failure AC-7.4 exists to prevent, now with a detector that says nothing. If they go, state in the README that hand-edited pages are not re-checked.
 
 **Never cut:** sections 4–6 (the detection pipeline) or section 5 (representation). Without them there is no spec 2, and the project's differentiator disappears. Section 9 (the AC-10.1 prohibition test) is one test and must not be cut — it is the spec's thesis.
