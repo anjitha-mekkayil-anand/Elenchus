@@ -100,7 +100,7 @@ describe("formatSupersessionAnnotation (task 5.2)", () => {
     };
 
     const annotation = formatSupersessionAnnotation(entry);
-    expect(annotation).toBe("*superseded 2026-08-03 by `src/reschedule-mail`*");
+    expect(annotation).toBe(`*Superseded 2026-08-03 by \`src/reschedule-mail\` — "The exam is booked for 12 Aug."*`);
   });
 
   it("does not use strikethrough (AC-9.3: do not visually remove)", () => {
