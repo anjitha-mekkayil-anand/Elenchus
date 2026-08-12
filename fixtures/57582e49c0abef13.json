@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-08-12T10:45:13.731Z",
+  "request": {
+    "task": "retrieve",
+    "system": "You are the retrieval stage of a knowledge base called Elenchus.\n\nYour job: given the current page index and a new source, identify which existing pages the source's material could belong in.\n\nRules:\n- Return ONLY pages where the source adds something to what the page already covers.\n- For each candidate, give a one-sentence reason why the source is relevant to that page.\n- If NO existing page is a good fit, return an empty list — that is the correct answer for genuinely new topics.\n- Do not invent pages that do not exist in the index.\n\nRespond with a JSON array (no markdown fencing). Each element: {\"slug\": \"<slug>\", \"reason\": \"<reason>\"}.\nIf no pages match, respond with an empty array: []",
+    "messages": [
+      {
+        "role": "user",
+        "content": "## Current page index\n\n- [cooking-basics] Cooking Basics: Fundamental techniques for preparing food at home.\n- [fermentation] Fermentation: The metabolic process by which microorganisms convert sugars into acids, gases, or alcohol.\n- [food-safety] Food Safety: Preventing foodborne illness through proper handling, storage, and preparation.\n- [nutrition] Nutrition: How food composition affects health and energy.\n\n## New source text\n\n# Updated Food Safety Guidelines (2024)\n\nModern food safety research has refined our understanding of bacterial growth thresholds.\n\n## Temperature Control\n\nBacteria multiply rapidly between 5 °C and 63 °C. Food held in this range for more than two hours should be discarded. Refrigeration should maintain temperatures below 5 °C at all times.\n\n\n---\n\nWhich existing pages does this source touch? Return a JSON array of candidates with reasons, or [] if this is a new topic."
+      }
+    ]
+  },
+  "response": {
+    "content": "[{\"slug\": \"food-safety\", \"reason\": \"The source directly provides updated bacterial growth temperature thresholds, danger-zone time limits, and refrigeration targets, which refine this page's coverage of proper handling and storage.\"}, {\"slug\": \"cooking-basics\", \"reason\": \"The temperature control guidance for holding and refrigerating food bears on fundamental home food preparation practices covered here.\"}]",
+    "model": "claude-opus-5",
+    "usage": {
+      "input_tokens": 550,
+      "output_tokens": 135
+    }
+  }
+}
