@@ -76,11 +76,14 @@ Raw meat, poultry, and seafood must be stored below ready-to-eat foods. Separate
     // but it must be more than zero for factual content
     expect(claims.length).toBeGreaterThan(0);
 
-    // Each claim must have a non-empty text field
+    // Each claim must have a non-empty text field and an anchor
     for (const claim of claims) {
       expect(claim).toHaveProperty("text");
+      expect(claim).toHaveProperty("anchor");
       expect(typeof claim.text).toBe("string");
       expect(claim.text.trim().length).toBeGreaterThan(0);
+      expect(typeof claim.anchor).toBe("string");
+      expect(claim.anchor.trim().length).toBeGreaterThan(0);
     }
 
     // Claims should be standalone — no pronouns like "it", "this range", "they"
@@ -88,5 +91,9 @@ Raw meat, poultry, and seafood must be stored below ready-to-eat foods. Separate
     for (const claim of claims) {
       expect(claim.text).not.toMatch(/^(It |They |This |These |That )/);
     }
+
+    // Anchors should be section headings from the source, not "full-page"
+    const anchors = new Set(claims.map((c) => c.anchor));
+    expect(anchors.has("Temperature Danger Zone") || anchors.has("Cross-Contamination")).toBe(true);
   });
 });

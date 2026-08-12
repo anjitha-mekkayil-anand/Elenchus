@@ -20,6 +20,8 @@ import type { ModelClient, ModelRequest } from "./model/types.js";
 export interface ExtractedClaim {
   /** A single factual assertion, self-contained and understandable in isolation. */
   text: string;
+  /** The nearest preceding heading in the source. Used as the section anchor for page claims. */
+  anchor: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,9 +96,11 @@ The cost of inconsistent resolution is a detection gap: a later source revising 
 
 ## Output format
 
-Respond with a JSON array of objects. Each object has one field: "text" containing the claim.
+Respond with a JSON array of objects. Each object has two fields:
+- "text": the claim
+- "anchor": the nearest preceding markdown heading (## or ###) under which this claim appears in the source. If the claim appears before any heading, use the document title (# heading). Use the heading text only, without the # characters.
 
-Example: [{"text": "Bacteria multiply rapidly between 4 °C and 60 °C."}]
+Example: [{"text": "Bacteria multiply rapidly between 4 °C and 60 °C.", "anchor": "Temperature Danger Zone"}]
 
 If no claims are found: []
 
@@ -118,7 +122,7 @@ ${text}
 
 ---
 
-Extract all discrete factual claims from this source. Return a JSON array of {"text": "..."} objects, or [] if no checkable assertions are present.`;
+Extract all discrete factual claims from this source. Return a JSON array of {"text": "...", "anchor": "..."} objects, or [] if no checkable assertions are present.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,5 +185,10 @@ function parseClaims(raw: string): ExtractedClaim[] {
       const obj = item as { text: unknown };
       return typeof obj.text === "string" && obj.text.trim().length > 0;
     })
-    .map((item: { text: string }) => ({ text: item.text.trim() }));
+    .map((item: { text: string; anchor?: string }) => ({
+      text: item.text.trim(),
+      anchor: typeof item.anchor === "string" && item.anchor.trim().length > 0
+        ? item.anchor.trim()
+        : "full-page",
+    }));
 }
