@@ -24,7 +24,7 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 ## 3. Staleness — re-extract on hash mismatch
 
 - [ ] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `content_hash` on **page claims** → *AC-7.4*
-- [ ] **3.2** 🤖 If the hash mismatches, re-extract that page's claims from the current file content, **persist them with the current content hash, replacing the stale rows**, then proceed with the comparison. → *AC-7.4, AC-7.2*
+- [ ] **3.2** 🤖 If the hash mismatches **or there are no active claims** (AC-7.7), re-extract that page's claims from the current file content, **mark the old rows superseded (`superseded_at` set to current timestamp) and insert the new ones with the current content hash**. Nothing is deleted — contradictions keep referencing superseded rows, so the foreign key never breaks. Then proceed with the comparison. → *AC-7.4, AC-7.2, AC-7.7*
 - [ ] **3.3** 🔧 Unit test: simulate a hand-edit (modify file, leave DB stale), verify re-extraction is triggered
 - [ ] **3.4** 🔧 Unit test: after a re-extraction triggered by hand-edit, a second ingest of an unrelated source does **not** trigger re-extraction on that page again → *AC-7.4*
 

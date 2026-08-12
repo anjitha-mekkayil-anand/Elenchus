@@ -58,15 +58,29 @@ The orphan note (spec 1) makes a base that grows without understanding. The sile
 - **AC-7.4** — IF a page's content has changed outside the application, THEN THE SYSTEM SHALL re-extract that page's claims before using them in a comparison.
 - **AC-7.5** — WHEN a claim is extracted, THE SYSTEM SHALL resolve every reference it depends on into the claim itself, in the most definitional form the source provides — the number, the date, the named entity — and SHALL NOT resolve a reference to a section heading or to a term the source defines elsewhere.
 
-> **AC-7.3 was a list before 2026-08-12** — *"opinion, description, instruction, question"* — and the list was wrong at its edges. A safety rule is grammatically an instruction and still asserts something checkable: *"store raw meat below ready-to-eat foods to prevent cross-contamination"* is false if storing it below does not prevent contamination. Excluding instructions wholesale would have dropped genuine conflicts between sources that prescribe opposite things.
+> **AC-7.3 was a list before 2026-08-12** — *"opinion, description, instruction, question"* — and the list was wrong at its edges. **Two sources prescribing opposite things is a genuine conflict**, and excluding instructions wholesale drops exactly what this project exists to catch. A prescription is checkable: it is wrong if following it produces the wrong outcome.
 >
-> The replacement reuses the project's own test from **AC-8.7** — *state what would have to be false* — so the same gate now runs at extraction and at classification. Opinion, framing and questions fail it for free; prescriptions that carry a real assertion pass.
+> The replacement reuses the project's own test from **AC-8.7** — *state what would have to be false* — so the same gate now runs at extraction and at classification. Opinion and questions fail it for free; prescriptions that carry a real prescription pass.
+>
+> ⚠ **This note originally argued the point using a quoted example presented as if it came from the source page. It did not** — the consequence clause was manufactured by the first extraction run, which borrowed it from the section heading *"Cross-Contamination"*, and the argument was then written up around a sentence the corpus never contained. The conclusion stands on the prescribe-opposite-things reasoning above; the fabricated example is removed rather than quietly reworded, because a spec that invents its own evidence is the failure this project is about.
 
 > **AC-7.5 comes from the first real extraction run.** Given *"Bacteria multiply rapidly between 4 °C and 60 °C. Perishable food should not remain in this range for more than two hours (one hour above 32 °C ambient)"*, the extractor resolved the same referent two different ways in adjacent claims — once as *"the temperature range of 4 °C to 60 °C"* and once as *"the temperature danger zone"*, borrowing the section heading.
 >
 > **The second form is not standalone, and the cost is a detection gap rather than an ugly claim.** Both claims describe one rule. A later source revising the range contradicts the first and sails past the second, because they no longer share a comparable surface. It would present as a classifier failure and live in extraction.
 
+- **AC-7.6** — THE SYSTEM SHALL extract only what the source asserts, and SHALL NOT convert a heading, topic label, or noun-phrase framing into a proposition.
+
+> **AC-7.6 comes from the same extraction run as AC-7.5.** The source line *"Preventing foodborne illness through proper handling, storage, and preparation"* is a noun-phrase subtitle — a topic label. The extractor turned it into *"Foodborne illness can be prevented through proper handling, storage, and preparation of food"*, manufacturing a causal claim the source never made. It passed the AC-7.3 falsifier gate because the resulting proposition *is* technically falsifiable, but the source never asserted it — the heading names a topic, not a fact.
+>
+> The same failure produced *"to prevent cross-contamination"* in an earlier run (from the section heading "Cross-Contamination") and the "temperature danger zone" heading-borrowing caught by AC-7.5. All three are one failure: **manufacturing assertion where the source had framing.**
+
 > **AC-7.4 exists because NF-1 is a promise.** Pages are editable in any editor, so a stored claim table can go stale. A detector reasoning from stale claims produces confident nonsense, which is the exact failure this spec is meant to prevent.
+
+- **AC-7.7** — WHERE a page retrieved for comparison has no stored active claims, THE SYSTEM SHALL extract them before comparing, by the same mechanism as AC-7.4.
+
+> **AC-7.7 exists because seed pages have no claims.** `npm run seed` copies demo pages into `pages/` and rebuilds the index. No claims are extracted — page claims are only persisted at task 6.5, after Apply. Without AC-7.7, the first ingest touching a seed page finds nothing to compare against and detects no conflict — with no error, because zero claims is indistinguishable from zero conflicts.
+>
+> The fix is one condition: a page with no stored active claims is a cache miss and takes the same path as a stale one. Cost stays bounded by NF-5 — only pages this ingest is writing to.
 
 ### Detecting
 
