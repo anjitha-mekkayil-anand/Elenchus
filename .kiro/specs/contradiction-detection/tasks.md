@@ -10,10 +10,10 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 1. Schema and storage
 
-- [ ] **1.1** 🔧 Add `claims` table to SQLite schema: `id`, `page`, `anchor`, `text`, `source_id`, `source_date`, `content_hash` → *AC-7.2*
-- [ ] **1.2** 🔧 Add `contradictions` table to SQLite schema: `id`, `claim_a`, `claim_b`, `kind`, `reasoning`, `status`, `resolved_keep`, `resolved_at`, `resolved_reason` → *AC-8.8, AC-10.2*
-- [ ] **1.3** 🔧 Create `contradictions.md` in on-disk layout (ensureLayout). Structure: open section first, then resolved section → *AC-9.4, NF-6*
-- [ ] **1.4** 🔧 Add `page_hash` column to the existing `pages` table. The current schema (`src/schema.ts`) has `slug`, `title`, `summary`, `created_at`, `updated_at` but no hash. Add `content_hash TEXT NOT NULL DEFAULT ''` — updated by Apply whenever a page is written. Required for AC-7.4's staleness check.
+- [x] **1.1** 🔧 Add `claims` table to SQLite schema: `id`, `page`, `anchor`, `text`, `source_id`, `source_date`, `content_hash` → *AC-7.2*
+- [x] **1.2** 🔧 Add `contradictions` table to SQLite schema: `id`, `claim_a`, `claim_b`, `kind`, `reasoning`, `status`, `resolved_keep`, `resolved_at`, `resolved_reason` → *AC-8.8, AC-10.2*
+- [x] **1.3** 🔧 Create `contradictions.md` in on-disk layout (ensureLayout). Structure: open section first, then resolved section → *AC-9.4, NF-6*
+- [x] **1.4** 🔧 Add `content_hash` column to the existing `pages` table. The current schema (`src/schema.ts`) has `slug`, `title`, `summary`, `created_at`, `updated_at` but no hash. Add `content_hash TEXT NOT NULL DEFAULT ''` — updated by Apply whenever a page is written. Required for AC-7.4's staleness check.
 
 ## 2. Extract — claims from source material
 
