@@ -6,7 +6,7 @@ Companion to `requirements.md`. Resolves OQ-3 and OQ-4. Written before implement
 
 ## Where it sits in the loop
 
-Spec 1's pipeline, with two stages inserted between Decide and Plan:
+Spec 1's pipeline, with two stages inserted between Decide and Plan and one after Apply:
 
 ```
 [1] Accept
@@ -129,7 +129,7 @@ contradictions.md   <- the register: open first, then resolved (AC-9.4)
 SQLite additions:
 
 ```
-claims          id · page · anchor · text · source_id · source_date · page_hash
+claims          id · page · anchor · text · source_id · source_date · content_hash
 contradictions  id · claim_a · claim_b · kind · reasoning · status
                    · resolved_keep · resolved_at · resolved_reason
 ```

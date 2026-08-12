@@ -10,23 +10,23 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 1. Schema and storage
 
-- [ ] **1.1** 🔧 Add `claims` table to SQLite schema: `id`, `page`, `anchor`, `text`, `source_id`, `source_date`, `page_hash` → *AC-7.2*
+- [ ] **1.1** 🔧 Add `claims` table to SQLite schema: `id`, `page`, `anchor`, `text`, `source_id`, `source_date`, `content_hash` → *AC-7.2*
 - [ ] **1.2** 🔧 Add `contradictions` table to SQLite schema: `id`, `claim_a`, `claim_b`, `kind`, `reasoning`, `status`, `resolved_keep`, `resolved_at`, `resolved_reason` → *AC-8.8, AC-10.2*
 - [ ] **1.3** 🔧 Create `contradictions.md` in on-disk layout (ensureLayout). Structure: open section first, then resolved section → *AC-9.4, NF-6*
 - [ ] **1.4** 🔧 Add `page_hash` column to the existing `pages` table. The current schema (`src/schema.ts`) has `slug`, `title`, `summary`, `created_at`, `updated_at` but no hash. Add `content_hash TEXT NOT NULL DEFAULT ''` — updated by Apply whenever a page is written. Required for AC-7.4's staleness check.
 
 ## 2. Extract — claims from source material
 
-- [ ] **2.1** 🤖 `extractClaims(text, sourceId, sourceDate, model)` → array of `{ text }`. Send material to model, get back discrete factual claims at assertion granularity → *AC-7.1*
+- [ ] **2.1** 🤖 `extractClaims(text, sourceId, sourceDate, model)` → array of `{ text }`. Send material to the model, get back discrete factual claims at assertion granularity. Claims are returned **unbound** — no page, no anchor, no hash — and held in memory for the Compare stage. → *AC-7.1*
 - [ ] **2.2** 🤖 Prompt construction: instruct the model to return nothing for opinion, description, instruction, question → *AC-7.3*
-- [ ] **2.3** 🔧 Return source claims from Extract **unbound** — source_id and source_date only, no page, no anchor, no hash. Held in memory for the Compare stage. → *AC-7.1*
-- [ ] **2.4** 🔧 Unit test: a source that asserts nothing checkable produces zero claims → *AC-7.3*
+- [ ] **2.3** 🔧 Unit test: a source that asserts nothing checkable produces zero claims → *AC-7.3*
 
 ## 3. Staleness — re-extract on hash mismatch
 
-- [ ] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `page_hash` on **page claims** → *AC-7.4*
-- [ ] **3.2** 🤖 If mismatch, re-extract that page's claims from the current file content before proceeding → *AC-7.4*
+- [ ] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `content_hash` on **page claims** → *AC-7.4*
+- [ ] **3.2** 🤖 If the hash mismatches, re-extract that page's claims from the current file content, **persist them with the current content hash, replacing the stale rows**, then proceed with the comparison. → *AC-7.4, AC-7.2*
 - [ ] **3.3** 🔧 Unit test: simulate a hand-edit (modify file, leave DB stale), verify re-extraction is triggered
+- [ ] **3.4** 🔧 Unit test: after a re-extraction triggered by hand-edit, a second ingest of an unrelated source does **not** trigger re-extraction on that page again → *AC-7.4*
 
 ## 4. Compare — source claims × stored claims
 
