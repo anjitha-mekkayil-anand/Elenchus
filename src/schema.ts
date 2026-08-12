@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS pages (
   slug          TEXT NOT NULL UNIQUE,        -- filename stem, used as key
   title         TEXT NOT NULL,
   summary       TEXT NOT NULL DEFAULT '',    -- one-line summary for retrieval (design.md)
+  content_hash  TEXT NOT NULL DEFAULT '',    -- SHA-256 of page content; staleness check (AC-7.4)
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -44,6 +45,37 @@ CREATE TABLE IF NOT EXISTS edits (
   rejection_reason TEXT,                         -- why it was rejected (AC-4.2)
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Claims: factual assertions stored against pages (spec 2, AC-7.2)
+-- These are PAGE claims (bound), persisted after Apply with the content hash as written.
+-- Source claims (unbound) are held in memory during an ingest and never stored here.
+-- Nothing deletes a claim: AC-10.3 requires rejected claims retained after resolution.
+CREATE TABLE IF NOT EXISTS claims (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  page          TEXT NOT NULL,               -- page slug
+  anchor        TEXT NOT NULL,               -- location within the page
+  text          TEXT NOT NULL,               -- the claim in its own words
+  source_id     INTEGER NOT NULL REFERENCES sources(id),
+  source_date   TEXT NOT NULL,               -- date from the source
+  content_hash  TEXT NOT NULL                -- hash of page content when claim was persisted
+);
+
+-- Contradictions: detected conflicts between claims (spec 2, AC-8.x, AC-10.x)
+-- kind: 'contradiction' | 'supersession'
+-- status: 'open' | 'resolved'
+-- Supersessions are stored for auditability (AC-8.5) but only contradictions reach the register.
+-- RESTRICT on claim references: nothing deletes a claim (AC-10.3).
+CREATE TABLE IF NOT EXISTS contradictions (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  claim_a         INTEGER NOT NULL REFERENCES claims(id) ON DELETE RESTRICT,
+  claim_b         INTEGER NOT NULL REFERENCES claims(id) ON DELETE RESTRICT,
+  kind            TEXT NOT NULL DEFAULT 'contradiction',  -- 'contradiction' | 'supersession'
+  reasoning       TEXT NOT NULL DEFAULT '',               -- AC-8.8: reasoning for classification
+  status          TEXT NOT NULL DEFAULT 'open',           -- 'open' | 'resolved'
+  resolved_keep   TEXT,                                    -- 'A' | 'B' | null
+  resolved_at     TEXT,                                    -- datetime of resolution
+  resolved_reason TEXT                                     -- user's stated reason (AC-10.2)
+);
 `;
 
 let db: Database.Database | null = null;
@@ -59,8 +91,19 @@ export function ensureSchema(): Database.Database {
 
   // WAL mode for better concurrent read performance
   db.pragma("journal_mode = WAL");
+  // Enable foreign key enforcement (SQLite does not enforce by default)
+  db.pragma("foreign_keys = ON");
 
   db.exec(SCHEMA_SQL);
+
+  // Migration: add content_hash to pages if it doesn't exist (for databases
+  // created before spec 2). SQLite has no ALTER TABLE ... IF NOT EXISTS, so
+  // we check the column list first.
+  const cols = db.pragma("table_info(pages)") as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "content_hash")) {
+    db.exec("ALTER TABLE pages ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''");
+  }
+
   return db;
 }
 
