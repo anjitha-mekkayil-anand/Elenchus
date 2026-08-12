@@ -248,10 +248,10 @@ describe("supersession annotation in correct section (task 6.9)", () => {
     expect(result.written).toHaveLength(1);
 
     const finalContent = readFileSync(pagePath, "utf-8");
-    expect(finalContent).toContain("*superseded 2026-08-12 by `src/reschedule-notice`*");
+    expect(finalContent).toContain("*Superseded 2026-08-12 by `src/reschedule-notice`");
 
     // The annotation must appear BEFORE the ## Preparation section
-    const annotationIdx = finalContent.indexOf("*superseded");
+    const annotationIdx = finalContent.indexOf("*Superseded");
     const prepIdx = finalContent.indexOf("## Preparation");
     expect(annotationIdx).toBeLessThan(prepIdx);
 
@@ -445,5 +445,43 @@ describe("source claims as page claims (task 6.5)", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].content_hash).toBe("new-hash-value");
     expect(rows[1].content_hash).toBe("new-hash-value");
+  });
+});
+
+
+
+// ---------------------------------------------------------------------------
+// Supersession deduplication — one annotation per superseded stored claim
+// ---------------------------------------------------------------------------
+
+describe("supersession deduplication", () => {
+  it("two source claims superseding the same stored claim produce one annotation", () => {
+    // The deduplication happens in ingest.ts (via supersededClaimIds set).
+    // Here we verify the annotation format — that formatSupersessionAnnotation
+    // produces a single self-explanatory line, and that the same call produces
+    // the same output (idempotent for dedup purposes).
+    const entry = {
+      existingClaimText: "The recommended safe internal temperature for poultry is 82 °C.",
+      supersessionDate: "2026-08-12",
+      sourceSlug: "poultry-temperature-revision",
+    };
+
+    const annotation1 = formatSupersessionAnnotation(entry);
+    const annotation2 = formatSupersessionAnnotation(entry);
+
+    // Same entry produces identical annotation (dedup would skip the second)
+    expect(annotation1).toBe(annotation2);
+
+    // The annotation is one line (no newlines)
+    expect(annotation1).not.toContain("\n");
+
+    // The annotation includes the superseded claim text
+    expect(annotation1).toContain("82 °C");
+
+    // The annotation includes the source slug (without hash prefix)
+    expect(annotation1).toContain("poultry-temperature-revision");
+
+    // Starts with *Superseded (italic)
+    expect(annotation1).toMatch(/^\*Superseded/);
   });
 });

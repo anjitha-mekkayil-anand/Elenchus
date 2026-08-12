@@ -107,11 +107,33 @@ export function formatContradictionId(numericId: number): string {
  * it." A strikethrough renders the claim as crossed out — visually removed,
  * carrying a "this is dead" signal the requirement does not want.
  *
+ * Includes the superseded claim text (truncated) so the annotation explains
+ * itself without requiring the reader to locate the claim above.
+ *
  * Placement rule: INSERT A NEW LINE immediately after the last line of the
  * claim's anchor region. (Claims may span multiple lines per design.md.)
  */
 export function formatSupersessionAnnotation(entry: SupersessionEntry): string {
-  return `*superseded ${entry.supersessionDate} by \`src/${displaySlug(entry.sourceSlug)}\`*`;
+  const quoted = truncateClaim(entry.existingClaimText, 120);
+  return `*Superseded ${entry.supersessionDate} by \`src/${displaySlug(entry.sourceSlug)}\` — "${quoted}"*`;
+}
+
+/**
+ * Truncates a claim to maxLen characters on a word boundary, adding ellipsis.
+ * If the claim is already short enough, returns it unchanged.
+ * Newlines are replaced with spaces (claims may span multiple lines but
+ * the annotation must be a single line for the invariant to hold).
+ */
+function truncateClaim(text: string, maxLen: number): string {
+  // Collapse newlines to spaces — the annotation is one line
+  const flat = text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  if (flat.length <= maxLen) return flat;
+  const truncated = flat.slice(0, maxLen);
+  const lastSpace = truncated.lastIndexOf(" ");
+  if (lastSpace > maxLen * 0.5) {
+    return truncated.slice(0, lastSpace) + "…";
+  }
+  return truncated + "…";
 }
 
 // ---------------------------------------------------------------------------

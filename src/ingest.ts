@@ -153,7 +153,7 @@ export async function runIngest(
   const writtenSlugs = applyResult.written.map((w) => w.slug);
   const contradictionIds: string[] = [];
   const phase2Edits: Edit[] = [];
-
+  const supersededClaimIds = new Set<number>(); // dedup: one annotation per stored claim
   try {
     db.exec("BEGIN TRANSACTION");
 
@@ -239,6 +239,12 @@ export async function runIngest(
           phase2Edits.push(buildCalloutEdit(db, conflict.storedClaim.id, conflict.storedClaim.page, entry));
 
         } else if (conflict.label === "supersession") {
+          // Deduplicate: one annotation per superseded stored claim per ingest.
+          // Multiple source claims may supersede the same stored claim — the DB
+          // rows stay (honest audit record), but only one annotation on the page.
+          if (supersededClaimIds.has(conflict.storedClaim.id)) continue;
+          supersededClaimIds.add(conflict.storedClaim.id);
+
           const sourceSlug = outcome.filename.replace(/\.txt$/, "");
           const annotation = formatSupersessionAnnotation({
             existingClaimText: conflict.storedClaim.text,
