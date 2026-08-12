@@ -342,4 +342,15 @@ describe("supersession annotation passes line-level invariant (task 5.5)", () =>
     // And the invariant passes
     expect(isSubsequence(originalPage, postEdit)).toBe(true);
   });
+
+  it("an inline append fails the invariant — this is why the annotation is its own line", () => {
+    const claimLine = "The exam is booked for 12 Aug.";
+    const originalPage = `# Page\n\n${claimLine}\n`;
+
+    // Simulate the OLD inline form: append to the existing line
+    const post = originalPage.replace(claimLine, claimLine + " ~~superseded 2026-08-03~~");
+
+    // This MUST fail. If it passes, the invariant has been weakened.
+    expect(isSubsequence(originalPage, post)).toBe(false);
+  });
 });

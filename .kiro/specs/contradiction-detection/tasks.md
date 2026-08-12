@@ -59,16 +59,17 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 - [ ] **6.6** 🔧 Extend the ingest record to name each detected pair with classification and reasoning → *AC-11.1*
 - [ ] **6.7** 🔧 Extend the ingest record: when no contradictions detected, state explicitly that claims were compared and none conflicted → *AC-11.2*
 - [ ] **6.8** 🔧 Roll back the whole ingest if register write fails after pages are written → *AC-4.5, design.md failure handling*
+- [ ] **6.9** 🔧 Integration test: run the **actual apply path** for a supersession edit and assert `isSubsequence` passes on the written result. Section 5's test builds post-edit content by hand; this proves the real production path composes with the invariant. → *AC-9.3, verify gate*
 
 ## 7. Resolution
 
-- [ ] **7.1** 🔧 CLI command: `elenchus resolve <id> --keep A|B --reason "..."` → *AC-10.2*
-- [ ] **7.2** 🔧 On resolve: rewrite callout to `resolved`, name kept claim, retain rejected claim on page → *AC-10.2, AC-10.3*
-- [ ] **7.3** 🔧 On resolve: move register entry from open to resolved section with reason → *AC-10.2*
-- [ ] **7.4** 🔧 On resolve: update SQLite row (status, resolved_keep, resolved_at, resolved_reason) → *AC-10.2*
-- [ ] **7.5** 🔧 Reject with stated reason if id is unknown or already resolved
-- [ ] **7.6** 🔧 Unit test: resolve keeps rejected claim on page, does not delete → *AC-10.3*
-- [ ] **7.7** 🔧 Unit test: resolve an unknown id → rejected, nothing changed
+- [x] **7.1** 🔧 CLI command: `elenchus resolve <id> --keep A|B --reason "..."` → *AC-10.2*
+- [x] **7.2** 🔧 On resolve: rewrite callout to `resolved`, name kept claim, retain rejected claim on page → *AC-10.2, AC-10.3*
+- [x] **7.3** 🔧 On resolve: move register entry from open to resolved section with reason → *AC-10.2*
+- [x] **7.4** 🔧 On resolve: update SQLite row (status, resolved_keep, resolved_at, resolved_reason) → *AC-10.2*
+- [x] **7.5** 🔧 Reject with stated reason if id is unknown or already resolved
+- [x] **7.6** 🔧 Unit test: resolve keeps rejected claim on page, does not delete → *AC-10.3*
+- [x] **7.7** 🔧 Unit test: resolve an unknown id → rejected, nothing changed
 
 ## 8. Reopen
 
