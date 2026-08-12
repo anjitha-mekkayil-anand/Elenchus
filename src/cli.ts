@@ -13,6 +13,7 @@ import { applyEdits, withRetry } from "./apply.js";
 import { writeIngestRecord } from "./record.js";
 import { AnthropicClient } from "./model/anthropic.js";
 import { RecordingClient } from "./model/recording.js";
+import { resolveContradiction } from "./resolve.js";
 
 const program = new Command();
 
@@ -163,6 +164,28 @@ program
     syncPagesFromDisk();
     rebuildIndex();
     console.log("[elenchus] index.md rebuilt from current pages.");
+  });
+
+program
+  .command("resolve <id>")
+  .description("Resolve an open contradiction.")
+  .requiredOption("--keep <side>", "Which claim to keep: A or B")
+  .requiredOption("--reason <reason>", "Stated reason for the resolution")
+  .action((id: string, opts: { keep: string; reason: string }) => {
+    ensureLayout();
+    ensureSchema();
+
+    const outcome = resolveContradiction(id, opts.keep, opts.reason);
+
+    if (!outcome.success) {
+      console.error(`[elenchus] resolve failed: ${outcome.reason}`);
+      process.exit(1);
+    }
+
+    console.log(
+      `[elenchus] resolved ${outcome.id} — kept ${outcome.kept}.\n` +
+      `  Reason: ${outcome.reason}`
+    );
   });
 
 program.parse();
