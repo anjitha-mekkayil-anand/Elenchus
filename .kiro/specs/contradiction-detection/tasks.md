@@ -42,7 +42,7 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 ## 5. Represent — on-page markers and register
 
 - [x] **5.1** 🔧 Contradiction callout format: `> [!warning] Contradiction — CD-NNN · open` block with both claims, sources, dates → *AC-9.1, AC-9.2, AC-9.5, NF-6*
-- [x] **5.2** 🔧 Supersession annotation format: `~~superseded YYYY-MM-DD by src/slug~~` appended to the existing claim's line → *AC-9.3*
+- [x] **5.2** 🔧 Supersession annotation format: `*superseded YYYY-MM-DD by \`src/slug\`*` inserted as a new line immediately after the claim → *AC-9.3*
 - [x] **5.3** 🔧 Write contradiction entries to the open section of `contradictions.md` → *AC-9.4, NF-6*
 - [x] **5.4** 🔧 Unit test: contradiction callout is a line insertion (passes the line-level invariant check) → *AC-9.1, verify gate*
 - [x] **5.5** 🔧 Unit test: supersession annotation appends to an existing line without altering lines around it (passes the line-level invariant check) → *AC-9.3, verify gate*

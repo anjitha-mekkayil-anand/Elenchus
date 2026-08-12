@@ -92,7 +92,7 @@ describe("formatContradictionId", () => {
 // ---------------------------------------------------------------------------
 
 describe("formatSupersessionAnnotation (task 5.2)", () => {
-  it("produces the strikethrough annotation", () => {
+  it("produces an italic annotation on its own line", () => {
     const entry: SupersessionEntry = {
       existingClaimText: "The exam is booked for 12 Aug.",
       supersessionDate: "2026-08-03",
@@ -100,16 +100,16 @@ describe("formatSupersessionAnnotation (task 5.2)", () => {
     };
 
     const annotation = formatSupersessionAnnotation(entry);
-    expect(annotation).toBe(" ~~superseded 2026-08-03 by src/reschedule-mail~~");
+    expect(annotation).toBe("*superseded 2026-08-03 by `src/reschedule-mail`*");
   });
 
-  it("starts with a space (appends to end of existing line)", () => {
+  it("does not use strikethrough (AC-9.3: do not visually remove)", () => {
     const annotation = formatSupersessionAnnotation({
       existingClaimText: "anything",
       supersessionDate: "2026-01-01",
       sourceSlug: "test",
     });
-    expect(annotation[0]).toBe(" ");
+    expect(annotation).not.toContain("~~");
   });
 });
 
@@ -277,7 +277,7 @@ describe("contradiction callout passes line-level invariant (task 5.4)", () => {
 // ---------------------------------------------------------------------------
 
 describe("supersession annotation passes line-level invariant (task 5.5)", () => {
-  it("appending an annotation to a line preserves ALL original lines", () => {
+  it("inserting a supersession annotation is a pure line insertion — isSubsequence returns true", () => {
     const originalPage =
       "# Nutrition\n\n" +
       "## Vitamins\n\n" +
@@ -290,68 +290,56 @@ describe("supersession annotation passes line-level invariant (task 5.5)", () =>
       sourceSlug: "reschedule-mail",
     });
 
-    // Simulate: append the annotation to the LAST LINE of the claim's region.
-    // The claim is on line "The exam is booked for 12 Aug."
-    // After annotation: "The exam is booked for 12 Aug. ~~superseded ...~~"
+    // Insert the annotation as a NEW LINE immediately after the claim line.
     const lines = originalPage.split("\n");
     const claimLineIdx = lines.findIndex((l) => l.includes("The exam is booked for 12 Aug."));
-    lines[claimLineIdx] = lines[claimLineIdx] + annotation;
+    // Insert after the claim line (the claim line itself is unchanged)
+    lines.splice(claimLineIdx + 1, 0, annotation);
     const postEdit = lines.join("\n");
 
-    // The LINE-LEVEL invariant: every non-empty line of pre appears in post.
-    // The annotated line is DIFFERENT from the original — but this is by design.
-    // The invariant check skips empty lines and checks exact line match.
-    //
-    // CRITICAL: This test documents that a supersession annotation MODIFIES
-    // an existing line (appends to it). The line-level check treats the
-    // annotated line as a new line — it does NOT match the original.
-    // This means the verify gate would REJECT this edit if it compared the
-    // whole page.
-    //
-    // The design's answer (design.md "The invariant composes"):
-    // "the supersession annotation appends to a line's end without altering
-    // the lines around it" — the verify stage must check that ALL OTHER LINES
-    // are preserved, while allowing the annotated line to change.
-    //
-    // For now, we verify the weaker property: all lines EXCEPT the annotated
-    // one are preserved. The verify stage integration (section 6) will need
-    // to handle this specific case.
-    const originalLines = originalPage.split("\n").filter((l) => l.length > 0);
-    const postLines = postEdit.split("\n");
-
-    // Every original line EXCEPT the one being annotated appears in post
-    for (const origLine of originalLines) {
-      if (origLine === "The exam is booked for 12 Aug.") {
-        // This line was modified — check that the POST contains it as a prefix
-        const annotatedLine = postLines.find((l) => l.startsWith(origLine));
-        expect(annotatedLine).toBeDefined();
-        expect(annotatedLine).toContain("~~superseded");
-      } else {
-        expect(postLines).toContain(origLine);
-      }
-    }
+    // THE POINT OF THIS TEST: isSubsequence passes because no existing line
+    // was modified. The annotation is a pure insertion.
+    expect(isSubsequence(originalPage, postEdit)).toBe(true);
   });
 
-  it("annotation only appends — does not insert newlines or alter surrounding lines", () => {
+  it("the annotation does not contain a newline (it IS one line)", () => {
     const annotation = formatSupersessionAnnotation({
       existingClaimText: "Multi-line claim\nthat spans two lines.",
       supersessionDate: "2026-01-01",
       sourceSlug: "test",
     });
 
-    // Must not contain newlines — it appends to ONE line
     expect(annotation).not.toContain("\n");
   });
 
-  it("the annotated line starts with the original content (prefix property)", () => {
-    const original = "The exam is booked for 12 Aug.";
+  it("the annotation uses italics, not strikethrough", () => {
     const annotation = formatSupersessionAnnotation({
-      existingClaimText: original,
+      existingClaimText: "Some claim.",
+      supersessionDate: "2026-08-03",
+      sourceSlug: "some-source",
+    });
+
+    expect(annotation).not.toContain("~~");
+    expect(annotation.startsWith("*")).toBe(true);
+    expect(annotation.endsWith("*")).toBe(true);
+  });
+
+  it("the original claim line is preserved verbatim in the post-edit content", () => {
+    const claimLine = "The exam is booked for 12 Aug.";
+    const originalPage = `# Page\n\n${claimLine}\n`;
+
+    const annotation = formatSupersessionAnnotation({
+      existingClaimText: claimLine,
       supersessionDate: "2026-08-03",
       sourceSlug: "reschedule-mail",
     });
 
-    const annotatedLine = original + annotation;
-    expect(annotatedLine.startsWith(original)).toBe(true);
+    // Insert annotation after claim
+    const postEdit = `# Page\n\n${claimLine}\n${annotation}\n`;
+
+    // The original claim line appears unchanged
+    expect(postEdit.split("\n")).toContain(claimLine);
+    // And the invariant passes
+    expect(isSubsequence(originalPage, postEdit)).toBe(true);
   });
 });

@@ -100,21 +100,30 @@ A markdown callout — renders in Obsidian, degrades to readable plain text ever
 > **B** — 2026-08-11 · `src/observed-signup` — Kiro Web runs on the Free plan.
 > Neither source states a change. Unresolved.
 
-Supersession is a one-line annotation, not a block — it is bookkeeping, not an open question:
+Supersession is a one-line annotation, not a block — it is bookkeeping, not an open question. **It goes on its own line, directly beneath the claim:**
 
-`The exam is booked for 12 Aug. ~~superseded 2026-08-03 by src/reschedule-mail~~`
+```markdown
+AI-103 is booked for 12 Aug.
+*superseded 2026-08-03 by `src/reschedule-mail`*
+```
 
-Both are additions. Neither removes a character of what was there.
+Both are additions. Neither alters a line that was already there.
 
 ---
 
-## The invariant composes — no new enforcement needed
+## The invariant composes — but only after the representation was corrected
 
-Spec 1's verify stage rejects any edit whose result does not contain the pre-edit content as a line-level subsequence. Every representation above is an insertion: the callout adds lines, the supersession annotation appends to a line's end without altering the lines around it.
+Spec 1's verify stage rejects any edit whose result does not contain the pre-edit content as a line-level subsequence. Both representations above are pure line insertions, so **contradiction handling cannot destroy content, and this required no new machinery.** That is the additions-only decision from spec 1 paying off one spec later, and it is the strongest argument available that the invariant was worth its cost — worth stating in the README rather than leaving for a judge to notice.
 
-So **contradiction handling cannot destroy content, and this required no new machinery.** That is the additions-only decision from spec 1 paying off one spec later, and it is the strongest argument available that the invariant was worth its cost — worth stating in the README rather than leaving for a judge to notice.
-
-> One real constraint falls out of it. The annotation in the supersession example appends to an existing line, so the check must remain **line-level**, not character-level. This is exactly the defect caught during spec 1's build — a character-level check leaked the moment text was appended, which is when the app is doing its normal job. Spec 2 depends on that fix; a regression to character-level breaks supersession, not just tidiness.
+> ⚠ **This section claimed the same thing before 2026-08-12 and was wrong, and the record is kept rather than tidied.**
+>
+> The original supersession form was **inline** — `AI-103 is booked for 12 Aug. ~~superseded…~~` appended to the claim's own line — and this section asserted it composed with the invariant anyway. It does not. `isSubsequence` requires every pre-edit line to appear **verbatim** in the post-edit content; appending to a line changes that line, so the verify gate rejects the edit. Found during section 5's implementation, by the agent building it, not by the person who wrote the spec.
+>
+> The two obvious repairs were both worse than the defect. **Weakening the check** to allow line extension makes every line in every page mutable-at-the-end, forever, to accommodate one rendering choice. **Exempting supersession edits** keys a bypass on what an edit claims to be — which is exactly the well-intentioned invariant AC-4.2 was written to replace.
+>
+> Moving the annotation to its own line fixes it with no change to the gate at all. And it is truer to the requirement: AC-9.3 says *annotate* the prior claim and do not remove it, while a strikethrough renders it crossed out — visually removed, carrying a "this is dead" signal the requirement does not want.
+>
+> **The lesson, and the reason this note stays:** the composition claim was never wrong about the invariant. It was wrong about the representation, and it was stated confidently one layer above where the mistake actually lived. A spec can be right about its principle and wrong about the artefact that has to carry it, and only the code finds out.
 
 ---
 

@@ -3,7 +3,7 @@
  *
  * Pure functions that produce on-page text from classified pairs:
  * - 5.1: Contradiction callout (Obsidian callout, degrades to quoted text)
- * - 5.2: Supersession annotation (appended to the last line of the claim's anchor region)
+ * - 5.2: Supersession annotation (own line, inserted after the claim)
  * - 5.3: Register entries in contradictions.md
  *
  * These functions take already-classified pairs and produce text.
@@ -75,20 +75,23 @@ export function formatContradictionId(numericId: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Produces the supersession annotation to APPEND to the last line of the
- * existing claim's anchor region.
+ * Produces the supersession annotation as a standalone line to INSERT
+ * immediately after the last line of the existing claim's anchor region.
  *
- * The annotation appends to an existing line — it does NOT alter the lines
- * around it. This is critical: the verify-stage invariant is line-level,
- * not character-level. A character-level check would break supersession,
- * and that regression has already been found and fixed once in this repo.
+ * This is a PURE LINE INSERTION. The existing claim line is not modified.
+ * isSubsequence(pre, post) passes unchanged — every pre-edit line still
+ * appears verbatim, in order. No exemption, no weakened check, no change
+ * to the verify gate.
  *
- * Design choice: "append to the LAST LINE of the claim's anchor region"
- * because design.md is explicit that a claim may span more than one line
- * ("one claim can span three sentences of qualification").
+ * No strikethrough: AC-9.3 says "annotate the prior claim and do not remove
+ * it." A strikethrough renders the claim as crossed out — visually removed,
+ * carrying a "this is dead" signal the requirement does not want.
+ *
+ * Placement rule: INSERT A NEW LINE immediately after the last line of the
+ * claim's anchor region. (Claims may span multiple lines per design.md.)
  */
 export function formatSupersessionAnnotation(entry: SupersessionEntry): string {
-  return ` ~~superseded ${entry.supersessionDate} by src/${entry.sourceSlug}~~`;
+  return `*superseded ${entry.supersessionDate} by \`src/${entry.sourceSlug}\`*`;
 }
 
 // ---------------------------------------------------------------------------
