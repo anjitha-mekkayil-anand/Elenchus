@@ -6,7 +6,8 @@
  * no anchor, no hash — and held in memory for the Compare stage.
  *
  * AC-7.1: extract claims asserted by the source.
- * AC-7.3: opinion, description, instruction, and question produce no claims.
+ * AC-7.3: material that asserts nothing checkable (falsifier test) produces no claims.
+ * AC-7.5: every reference resolved into the claim in its most definitional form.
  */
 
 import type { ModelClient, ModelRequest } from "./model/types.js";
@@ -50,16 +51,34 @@ GOOD: "The AI-103 exam is scheduled for 3 September."
 BAD: "This is important for health."
 GOOD: "Adequate vitamin D intake is important for bone health."
 
-## What is NOT a claim — produce nothing for these
+## What is NOT a claim — the falsifier test (AC-7.3)
 
-- Opinions or value judgments ("X is worth understanding", "Y is interesting")
-- Descriptions of what something IS without asserting a checkable fact ("Food safety is a topic")
-- Instructions or imperatives ("Always wash your hands", "Heat oil before adding food")
+Ask: "What would have to be false for this material to be wrong?"
+
+If that question cannot be answered, the material asserts nothing checkable and you must produce no claim for it. This covers:
+
+- Opinions or value judgments where nothing is falsifiable ("X is worth understanding")
+- Framing that describes what something IS without a checkable assertion ("Food safety is a topic")
 - Questions
 - Section headings or titles used as labels
-- Introductory framing that asserts nothing ("This section covers...")
+
+Note: a prescription or instruction CAN be a claim if it asserts something falsifiable. "Store raw meat below ready-to-eat foods to prevent cross-contamination" is checkable — it would be false if that storage practice did not prevent contamination. Extract the assertion it carries, not the imperative form.
 
 If the entire source material contains no checkable factual assertions, return an empty array. This is correct, not an error.
+
+## Reference resolution (AC-7.5)
+
+Resolve every reference a claim depends on into the claim itself, in the most DEFINITIONAL form the source provides — the number, the date, the named entity.
+
+Rules:
+- Never resolve a reference to a section heading.
+- Never resolve a reference to a term the source defines elsewhere — use the definition itself.
+- If two claims derive from the same referent, they MUST resolve it identically.
+
+BAD: "Perishable food should not remain in the temperature danger zone for more than one hour when the ambient temperature is above 32 °C." (borrows section heading)
+GOOD: "Perishable food should not remain in the temperature range of 4 °C to 60 °C for more than one hour when the ambient temperature is above 32 °C." (uses the definitional form)
+
+The cost of inconsistent resolution is a detection gap: a later source revising the range contradicts one claim and sails past the other because they no longer share a comparable surface.
 
 ## Output format
 

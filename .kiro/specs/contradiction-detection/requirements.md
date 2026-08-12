@@ -54,8 +54,17 @@ The orphan note (spec 1) makes a base that grows without understanding. The sile
 
 > **AC-7.1 and AC-7.2 are two different extractions and were one until 2026-08-12.** They were fused in the first draft, which put page binding on claims at a point in the pipeline where no page had been written yet. The practical damage was subtle: the only hash available at that point is the *pre-edit* one, so every page would have failed AC-7.4's staleness check on the very next ingest and been re-extracted — converting the flat cost that justified extract-at-write-time into the per-ingest cost the design had rejected, with nothing visibly wrong. **Source claims are unbound and feed this ingest's comparison; page claims are bound and feed future ingests' comparisons.**
 
-- **AC-7.3** — WHERE material asserts nothing checkable — opinion, description, instruction, question — THE SYSTEM SHALL store no claim for it.
+- **AC-7.3** — WHERE it cannot be stated what would have to be false for a piece of material to be wrong, THE SYSTEM SHALL store no claim for it.
 - **AC-7.4** — IF a page's content has changed outside the application, THEN THE SYSTEM SHALL re-extract that page's claims before using them in a comparison.
+- **AC-7.5** — WHEN a claim is extracted, THE SYSTEM SHALL resolve every reference it depends on into the claim itself, in the most definitional form the source provides — the number, the date, the named entity — and SHALL NOT resolve a reference to a section heading or to a term the source defines elsewhere.
+
+> **AC-7.3 was a list before 2026-08-12** — *"opinion, description, instruction, question"* — and the list was wrong at its edges. A safety rule is grammatically an instruction and still asserts something checkable: *"store raw meat below ready-to-eat foods to prevent cross-contamination"* is false if storing it below does not prevent contamination. Excluding instructions wholesale would have dropped genuine conflicts between sources that prescribe opposite things.
+>
+> The replacement reuses the project's own test from **AC-8.7** — *state what would have to be false* — so the same gate now runs at extraction and at classification. Opinion, framing and questions fail it for free; prescriptions that carry a real assertion pass.
+
+> **AC-7.5 comes from the first real extraction run.** Given *"Bacteria multiply rapidly between 4 °C and 60 °C. Perishable food should not remain in this range for more than two hours (one hour above 32 °C ambient)"*, the extractor resolved the same referent two different ways in adjacent claims — once as *"the temperature range of 4 °C to 60 °C"* and once as *"the temperature danger zone"*, borrowing the section heading.
+>
+> **The second form is not standalone, and the cost is a detection gap rather than an ugly claim.** Both claims describe one rule. A later source revising the range contradicts the first and sails past the second, because they no longer share a comparable surface. It would present as a classifier failure and live in extraction.
 
 > **AC-7.4 exists because NF-1 is a promise.** Pages are editable in any editor, so a stored claim table can go stale. A detector reasoning from stale claims produces confident nonsense, which is the exact failure this spec is meant to prevent.
 
