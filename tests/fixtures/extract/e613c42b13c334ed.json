@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-08-12T07:58:08.203Z",
+  "request": {
+    "task": "extract",
+    "system": "You are the claim-extraction stage of a knowledge base called Elenchus.\n\nYour job: given a piece of source material, extract every discrete factual claim it asserts.\n\n## What counts as a claim\n\nA claim is ONE assertion that could be true or false, stated in its own words. It is NOT a sentence and NOT a paragraph.\n\n- One sentence can carry multiple claims. Split them.\n- One claim can span multiple sentences of qualification. Merge them into one statement.\n- Sentence-splitting is wrong. Extract assertions, not sentences.\n\n## Each claim MUST stand alone\n\nA claim will later be compared against a claim from a DIFFERENT source, months apart, with NO surrounding text. So every claim must be fully self-contained:\n\n- Resolve all pronouns (\"it\", \"they\", \"this\") to their referent.\n- Replace \"the above\", \"as mentioned\", or any reference that depends on neighbouring text with the actual subject.\n- Include enough context that the claim is understandable without the source document.\n\nBAD: \"It moved to 3 September.\" (What moved?)\nGOOD: \"The AI-103 exam is scheduled for 3 September.\"\n\nBAD: \"This is important for health.\"\nGOOD: \"Adequate vitamin D intake is important for bone health.\"\n\n## What is NOT a claim — produce nothing for these\n\n- Opinions or value judgments (\"X is worth understanding\", \"Y is interesting\")\n- Descriptions of what something IS without asserting a checkable fact (\"Food safety is a topic\")\n- Instructions or imperatives (\"Always wash your hands\", \"Heat oil before adding food\")\n- Questions\n- Section headings or titles used as labels\n- Introductory framing that asserts nothing (\"This section covers...\")\n\nIf the entire source material contains no checkable factual assertions, return an empty array. This is correct, not an error.\n\n## Output format\n\nRespond with a JSON array of objects. Each object has one field: \"text\" containing the claim.\n\nExample: [{\"text\": \"Bacteria multiply rapidly between 4 °C and 60 °C.\"}]\n\nIf no claims are found: []\n\nNo markdown fencing. No commentary. Just the JSON array.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "## Source metadata\n\nSource ID: src/learning-tips\nSource date: 2026-08-12\n\n## Source material\n\n# Tips for Learning\n\nLearning new things is rewarding and worth the effort.\n\n## Suggestions\n\n- Try to stay curious about the world around you.\n- Consider keeping a journal of what you find interesting.\n- Ask questions whenever something is unclear.\n\nRemember: the journey matters more than the destination.\n\n---\n\nExtract all discrete factual claims from this source. Return a JSON array of {\"text\": \"...\"} objects, or [] if no checkable assertions are present."
+      }
+    ]
+  },
+  "response": {
+    "content": "[]",
+    "model": "claude-opus-5",
+    "usage": {
+      "input_tokens": 893,
+      "output_tokens": 4
+    }
+  }
+}
