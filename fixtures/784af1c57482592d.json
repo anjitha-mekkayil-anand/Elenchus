@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-08-12T10:47:31.635Z",
+  "request": {
+    "task": "plan",
+    "system": "You are the planning stage of a knowledge base called Elenchus.\n\nYour job: given the FULL CURRENT CONTENT of a page and new source material, produce insertions that weave the source into the page.\n\nRules:\n- Produce ADDITIONS ONLY. Never remove, rewrite, or reorganise existing content.\n- Each edit is an insertion at a specific anchor (a section heading in the page).\n- If no existing section fits, you may propose a new section heading as the anchor.\n- Keep insertions concise and factual.\n- The citation will be attached automatically — do not include it yourself.\n\nRespond with a JSON array (no markdown fencing). Each element:\n{\"anchor\": \"<section heading or new heading>\", \"insertion\": \"<text to insert>\"}\n\nIf the source adds nothing meaningful to this page, return an empty array: []",
+    "messages": [
+      {
+        "role": "user",
+        "content": "## Full current page content [fermentation]\n\n# Fermentation\n\nThe metabolic process by which microorganisms convert sugars into acids, gases, or alcohol.\n\n## Lactic Acid Fermentation\n\nLactobacillus bacteria convert sugars to lactic acid. This is the basis of yoghurt, sauerkraut, and kimchi. Optimal temperature range is 20–30 °C. Basic sauerkraut fermentation takes about two weeks at room temperature.\n\n## Yeast Fermentation\n\nSaccharomyces cerevisiae converts glucose into ethanol and carbon dioxide. Used in bread (CO₂ leavens the dough) and brewing (ethanol is the product).\n\n\n## New source material\n\nOrigin: examples/fermentation-timing.md\n\n# Sauerkraut Fermentation\n\nBasic sauerkraut fermentation takes 14 days at room temperature. The cabbage should be submerged in its own brine throughout the process to prevent mould growth.\n\n\n---\n\nProduce insertions to weave the source material into this page. Return a JSON array of {anchor, insertion} objects, or [] if nothing to add."
+      }
+    ]
+  },
+  "response": {
+    "content": "[{\"anchor\": \"Lactic Acid Fermentation\", \"insertion\": \"Throughout sauerkraut fermentation the cabbage should remain submerged in its own brine, which prevents mould growth.\"}]",
+    "model": "claude-opus-5",
+    "usage": {
+      "input_tokens": 649,
+      "output_tokens": 71
+    }
+  }
+}

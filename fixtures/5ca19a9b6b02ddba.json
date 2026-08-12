@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-08-12T10:47:07.493Z",
+  "request": {
+    "task": "retrieve",
+    "system": "You are the retrieval stage of a knowledge base called Elenchus.\n\nYour job: given the current page index and a new source, identify which existing pages the source's material could belong in.\n\nRules:\n- Return ONLY pages where the source adds something to what the page already covers.\n- For each candidate, give a one-sentence reason why the source is relevant to that page.\n- If NO existing page is a good fit, return an empty list — that is the correct answer for genuinely new topics.\n- Do not invent pages that do not exist in the index.\n\nRespond with a JSON array (no markdown fencing). Each element: {\"slug\": \"<slug>\", \"reason\": \"<reason>\"}.\nIf no pages match, respond with an empty array: []",
+    "messages": [
+      {
+        "role": "user",
+        "content": "## Current page index\n\n- [cooking-basics] Cooking Basics: Fundamental techniques for preparing food at home.\n- [fermentation] Fermentation: The metabolic process by which microorganisms convert sugars into acids, gases, or alcohol.\n- [food-safety] Food Safety: Preventing foodborne illness through proper handling, storage, and preparation.\n- [nutrition] Nutrition: How food composition affects health and energy.\n\n## New source text\n\n# Sauerkraut Fermentation\n\nBasic sauerkraut fermentation takes 14 days at room temperature. The cabbage should be submerged in its own brine throughout the process to prevent mould growth.\n\n\n---\n\nWhich existing pages does this source touch? Return a JSON array of candidates with reasons, or [] if this is a new topic."
+      }
+    ]
+  },
+  "response": {
+    "content": "[{\"slug\": \"fermentation\", \"reason\": \"The source gives a concrete fermentation example with timing (14 days at room temperature) and the mechanics of brine submersion for lacto-fermenting cabbage.\"}, {\"slug\": \"food-safety\", \"reason\": \"It specifies keeping the cabbage under brine to prevent mould growth, which is a spoilage-prevention practice for home fermentation.\"}]",
+    "model": "claude-opus-5",
+    "usage": {
+      "input_tokens": 497,
+      "output_tokens": 204
+    }
+  }
+}

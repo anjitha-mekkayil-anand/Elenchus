@@ -4,7 +4,7 @@ The metabolic process by which microorganisms convert sugars into acids, gases, 
 
 ## Lactic Acid Fermentation
 
-Lactobacillus bacteria convert sugars to lactic acid. This is the basis of yoghurt, sauerkraut, and kimchi. Optimal temperature range is 20–30 °C.
+Lactobacillus bacteria convert sugars to lactic acid. This is the basis of yoghurt, sauerkraut, and kimchi. Optimal temperature range is 20–30 °C. Basic sauerkraut fermentation takes about two weeks at room temperature.
 
 ## Yeast Fermentation
 
