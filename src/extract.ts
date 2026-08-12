@@ -8,6 +8,7 @@
  * AC-7.1: extract claims asserted by the source.
  * AC-7.3: material that asserts nothing checkable (falsifier test) produces no claims.
  * AC-7.5: every reference resolved into the claim in its most definitional form.
+ * AC-7.6: extract only what the source asserts; do not manufacture assertions from framing.
  */
 
 import type { ModelClient, ModelRequest } from "./model/types.js";
@@ -58,13 +59,24 @@ Ask: "What would have to be false for this material to be wrong?"
 If that question cannot be answered, the material asserts nothing checkable and you must produce no claim for it. This covers:
 
 - Opinions or value judgments where nothing is falsifiable ("X is worth understanding")
-- Framing that describes what something IS without a checkable assertion ("Food safety is a topic")
 - Questions
 - Section headings or titles used as labels
 
-Note: a prescription or instruction CAN be a claim if it asserts something falsifiable. "Store raw meat below ready-to-eat foods to prevent cross-contamination" is checkable — it would be false if that storage practice did not prevent contamination. Extract the assertion it carries, not the imperative form.
+Note: a prescription or instruction CAN be a claim if it asserts something falsifiable. Two sources prescribing opposite things is a genuine conflict. Extract the falsifiable assertion a prescription carries, not the imperative form.
 
 If the entire source material contains no checkable factual assertions, return an empty array. This is correct, not an error.
+
+## Do NOT manufacture assertions (AC-7.6)
+
+Extract ONLY what the source actually asserts. Do NOT:
+
+- Convert a heading, topic label, subtitle, or noun-phrase framing into a proposition
+- Add causal claims ("to prevent X") that the source does not state
+- Turn a category description ("Preventing foodborne illness through proper handling") into a factual claim about prevention effectiveness
+
+A subtitle like "Preventing foodborne illness through proper handling, storage, and preparation" is a TOPIC LABEL — it names what the section is about, not an assertion that proper handling prevents illness. Do not extract it.
+
+The test: if the source would read identically as a bullet point on a table of contents, it is framing, not a claim.
 
 ## Reference resolution (AC-7.5)
 

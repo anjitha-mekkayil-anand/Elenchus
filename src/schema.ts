@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS edits (
 -- These are PAGE claims (bound), persisted after Apply with the content hash as written.
 -- Source claims (unbound) are held in memory during an ingest and never stored here.
 -- Nothing deletes a claim: AC-10.3 requires rejected claims retained after resolution.
+-- superseded_at: NULL = active; set when re-extraction replaces this claim (AC-7.4).
+-- Re-extraction marks old rows superseded and inserts new ones — never deletes.
+-- Contradictions keep referencing superseded rows, so history survives and the FK never breaks.
 CREATE TABLE IF NOT EXISTS claims (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   page          TEXT NOT NULL,               -- page slug
@@ -57,7 +60,8 @@ CREATE TABLE IF NOT EXISTS claims (
   text          TEXT NOT NULL,               -- the claim in its own words
   source_id     INTEGER NOT NULL REFERENCES sources(id),
   source_date   TEXT NOT NULL,               -- date from the source
-  content_hash  TEXT NOT NULL                -- hash of page content when claim was persisted
+  content_hash  TEXT NOT NULL,               -- hash of page content when claim was persisted
+  superseded_at TEXT                          -- NULL = active; ISO timestamp when superseded
 );
 
 -- Contradictions: detected conflicts between claims (spec 2, AC-8.x, AC-10.x)
@@ -104,6 +108,13 @@ export function ensureSchema(): Database.Database {
   const cols = db.pragma("table_info(pages)") as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "content_hash")) {
     db.exec("ALTER TABLE pages ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''");
+  }
+
+  // Migration: add superseded_at to claims if it doesn't exist (for databases
+  // created before the staleness/re-extraction feature, task 3.2).
+  const claimCols = db.pragma("table_info(claims)") as Array<{ name: string }>;
+  if (!claimCols.some((c) => c.name === "superseded_at")) {
+    db.exec("ALTER TABLE claims ADD COLUMN superseded_at TEXT");
   }
 
   // Migration: add UNIQUE(claim_a, claim_b) index to contradictions if missing
