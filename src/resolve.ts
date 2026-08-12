@@ -16,7 +16,7 @@
  * no status flag, no soft delete, no marking.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { getBaseDir } from "./layout.js";
 import { ensureSchema } from "./schema.js";
@@ -150,9 +150,8 @@ function parseContradictionId(id: string): number | null {
  * Scans all pages in pages/.
  */
 function findPageWithCallout(cdId: string): string | null {
-  const { readdirSync } = require("node:fs") as typeof import("node:fs");
   const pagesDir = resolve(getBaseDir(), "pages");
-  const files = readdirSync(pagesDir).filter((f: string) => f.endsWith(".md"));
+  const files = readdirSync(pagesDir).filter((f) => f.endsWith(".md"));
 
   for (const file of files) {
     const content = readFileSync(resolve(pagesDir, file), "utf-8");
