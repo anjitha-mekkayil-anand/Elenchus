@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { Command } from "commander";
 import { ensureLayout, getBaseDir } from "./layout.js";
 import { ensureSchema, getDb } from "./schema.js";
@@ -9,6 +9,7 @@ import { syncPagesFromDisk, rebuildIndex } from "./pages.js";
 import { retrieve } from "./retrieve.js";
 import { decide } from "./decide.js";
 import { plan } from "./plan.js";
+import type { Edit } from "./plan.js";
 import { applyEdits, withRetry } from "./apply.js";
 import { writeIngestRecord } from "./record.js";
 import type { DetectedPairRecord, RejectedPairRecord } from "./record.js";
@@ -25,8 +26,13 @@ import {
   formatSupersessionAnnotation,
   addToRegister,
 } from "./contradict.js";
-import type { ContradictionEntry, SupersessionEntry } from "./contradict.js";
-import { persistPageClaims } from "./persist.js";
+import type { ContradictionEntry } from "./contradict.js";
+import {
+  insertSourceClaimsAsPageClaims,
+  refreshClaimHashes,
+  getPageContentHash,
+} from "./persist.js";
+import { contentHash } from "./hash.js";
 
 const program = new Command();
 
@@ -121,8 +127,9 @@ program
     // Extract source claims (6.1) — unbound, for comparison
     // -----------------------------------------------------------------------
     console.log("[elenchus] extracting source claims…");
+    const sourceDate = new Date().toISOString().slice(0, 10);
     const sourceClaims = await withRetry(
-      () => extractClaims(sourceText, outcome.filename, new Date().toISOString().slice(0, 10), model),
+      () => extractClaims(sourceText, outcome.filename, sourceDate, model),
       "extract"
     );
     console.log(`[elenchus] ${sourceClaims.length} source claim(s) extracted`);
@@ -145,7 +152,7 @@ program
       const seedSourceId = getSeedSourceId();
 
       for (const slug of targetSlugs) {
-        const result = await ensurePageClaims(slug, seedSourceId, new Date().toISOString().slice(0, 10), model);
+        const result = await ensurePageClaims(slug, seedSourceId, sourceDate, model);
         for (const c of result.claims) {
           storedClaims.push({
             id: c.id,
@@ -172,7 +179,7 @@ program
     }
 
     // -----------------------------------------------------------------------
-    // Plan (6.3) — now includes contradiction/supersession edits
+    // Plan phase 1 — weave edits only (anchors now known)
     // -----------------------------------------------------------------------
     console.log("[elenchus] planning edits…");
     const planResult = await withRetry(
@@ -180,180 +187,231 @@ program
       "plan"
     );
 
-    // Add contradiction and supersession edits to the plan
-    for (const conflict of allConflicts) {
-      if (conflict.label === "contradiction") {
-        // The callout will be inserted by the post-Apply stage (6.4).
-        // We don't add it to plan edits because it needs a DB id first.
-      } else if (conflict.label === "supersession") {
-        // Supersession annotations are also handled post-Apply (6.4).
+    // Determine which pages each source claim lands on (from weave decisions)
+    // For simplicity: all source claims are bound to ALL weave target pages.
+    // The weave edit's anchor provides the placement.
+    const weaveAnchors = new Map<string, string>(); // slug → first anchor used
+    for (const edit of planResult.edits) {
+      if (edit.anchor !== "(new page)" && !weaveAnchors.has(edit.page)) {
+        weaveAnchors.set(edit.page, edit.anchor);
       }
     }
 
-    console.log(`[elenchus] ${planResult.edits.length} edit(s) planned`);
+    // -----------------------------------------------------------------------
+    // Cache pre-Apply page content for rollback (6.8)
+    // -----------------------------------------------------------------------
+    const pagesDir = resolve(getBaseDir(), "pages");
+    const preApplyContent = new Map<string, string | null>();
+    const allTargetPages = new Set<string>();
+    for (const edit of planResult.edits) {
+      allTargetPages.add(edit.page);
+    }
+    // Also include pages that will get callouts/annotations
+    for (const conflict of allConflicts) {
+      allTargetPages.add(conflict.storedClaim.page);
+    }
+    for (const slug of allTargetPages) {
+      const pagePath = resolve(pagesDir, `${slug}.md`);
+      if (existsSync(pagePath)) {
+        preApplyContent.set(slug, readFileSync(pagePath, "utf-8"));
+      } else {
+        preApplyContent.set(slug, null);
+      }
+    }
 
     // -----------------------------------------------------------------------
-    // Verify + Apply
+    // Plan phase 2 — contradiction callouts and supersession annotations
+    // These need DB ids, so we do: insert claims → insert contradiction rows
+    // → get CD-NNN ids → build callout/annotation edits.
+    //
+    // But we need Apply to run first so the page exists with source material.
+    // The two-phase approach: Apply weave edits first, then insert claims
+    // and conflict rows in a transaction, then apply callout/annotation edits.
     // -----------------------------------------------------------------------
-    console.log("[elenchus] verifying and applying…");
+
+    // -----------------------------------------------------------------------
+    // Verify + Apply (phase 1: weave edits)
+    // -----------------------------------------------------------------------
+    console.log("[elenchus] verifying and applying weave edits…");
     const applyResult = applyEdits(planResult.edits);
+    console.log(`[elenchus] ${applyResult.written.length} page(s) written, ${applyResult.rejected.length} rejected`);
 
     // -----------------------------------------------------------------------
-    // Post-Apply: persist claims + register contradictions (6.4, 6.5)
-    // Wrapped in a transaction. On failure: roll back DB + file writes (6.8).
+    // Transaction: insert source claims as page claims, insert conflict rows,
+    // build and apply callout/annotation edits, refresh hashes.
+    // On failure: roll back DB + restore files from preApplyContent.
     // -----------------------------------------------------------------------
     const db = getDb();
     const writtenSlugs = applyResult.written.map((w) => w.slug);
+    const contradictionIds: string[] = [];
+    const phase2Edits: Edit[] = [];
 
     try {
       db.exec("BEGIN TRANSACTION");
 
-      // 6.4: Store contradictions and write register/page annotations
-      for (const conflict of allConflicts) {
-        if (conflict.label === "contradiction") {
-          // Insert into contradictions table
-          const result = db.prepare(
-            "INSERT INTO contradictions (claim_a, claim_b, kind, reasoning) VALUES (?, ?, ?, ?)"
-          ).run(
-            conflict.storedClaim.id,
-            // For claim_b we need to find or reference the source claim.
-            // Source claims are unbound (not in DB). We need the stored claim's id.
-            // Actually: claim_a is the STORED claim (existing), claim_b needs to be
-            // a persisted claim. But source claims are not persisted until 6.5.
-            // This is a sequencing issue — we store the contradiction with claim_a only
-            // for now and fill claim_b after persist.
-            // 
-            // RESOLUTION: Store contradiction after persist, when source claims have IDs.
-            // Skip here — handled below after persistPageClaims.
-            0, // placeholder — will be handled in the persist-then-store flow below
-            "contradiction",
-            conflict.reasoning
-          );
+      // 6.5: Insert ALL source claims as page claims (not just conflicting ones).
+      // A non-conflicting claim was still woven into the page, and if it never
+      // becomes a page claim then a future source contradicting it finds nothing.
+      const claimIdsByText = new Map<string, number>(); // claim text → claims.id
 
-          // We'll fix this below — for now just track we need to store these.
+      for (const slug of writtenSlugs) {
+        const hash = getPageContentHash(slug);
+        const anchor = weaveAnchors.get(slug) ?? "full-page";
+
+        const ids = insertSourceClaimsAsPageClaims(
+          slug, sourceClaims, outcome.sourceId, sourceDate, anchor, hash
+        );
+
+        // Map claim text → id for contradiction row insertion
+        for (let i = 0; i < sourceClaims.length; i++) {
+          claimIdsByText.set(sourceClaims[i].text, ids[i]);
+        }
+
+        // Refresh hashes on ALL active claims for this page (existing ones too).
+        // The page grew — existing claims' hashes would mismatch otherwise.
+        refreshClaimHashes(slug, hash);
+      }
+
+      // 6.4: Insert contradiction and supersession rows, build page edits
+      for (const conflict of allConflicts) {
+        const claimBId = claimIdsByText.get(conflict.sourceClaim.text);
+        if (!claimBId) {
+          // Source claim was not persisted (page not in writtenSlugs). Fail the ingest.
+          throw new Error(
+            `Cannot persist conflict: source claim "${conflict.sourceClaim.text}" ` +
+            `was not inserted as a page claim. This means the source material was ` +
+            `not woven into any written page.`
+          );
+        }
+
+        const insertResult = db.prepare(
+          "INSERT INTO contradictions (claim_a, claim_b, kind, reasoning) VALUES (?, ?, ?, ?)"
+        ).run(conflict.storedClaim.id, claimBId, conflict.label, conflict.reasoning);
+
+        if (conflict.label === "contradiction") {
+          const cdId = formatContradictionId(Number(insertResult.lastInsertRowid));
+          contradictionIds.push(cdId);
+
+          // Look up claim A's actual source info from the DB
+          const claimARow = db.prepare(
+            "SELECT source_id, source_date FROM claims WHERE id = ?"
+          ).get(conflict.storedClaim.id) as { source_id: number; source_date: string } | undefined;
+
+          const claimASourceRow = claimARow
+            ? db.prepare("SELECT filename FROM sources WHERE id = ?").get(claimARow.source_id) as { filename: string } | undefined
+            : undefined;
+
+          const claimASlug = claimASourceRow?.filename?.replace(/\.txt$/, "") ?? "seed-corpus";
+          const claimADate = claimARow?.source_date ?? conflict.storedClaim.source_date;
+
+          const sourceSlug = outcome.filename.replace(/\.txt$/, "");
+
+          const entry: ContradictionEntry = {
+            id: cdId,
+            claimA: {
+              text: conflict.storedClaim.text,
+              sourceSlug: claimASlug,
+              sourceDate: claimADate,
+            },
+            claimB: {
+              text: conflict.sourceClaim.text,
+              sourceSlug: sourceSlug,
+              sourceDate: sourceDate,
+            },
+            reasoning: conflict.reasoning,
+          };
+
+          // Write to register
+          addToRegister(entry);
+
+          // Build callout edit for the page (AC-9.5: visible on the page itself)
+          const callout = formatContradictionCallout(entry);
+          const claimAAnchorRow = db.prepare(
+            "SELECT anchor FROM claims WHERE id = ?"
+          ).get(conflict.storedClaim.id) as { anchor: string } | undefined;
+          const calloutAnchor = claimAAnchorRow?.anchor || "full-page";
+          phase2Edits.push({
+            page: conflict.storedClaim.page,
+            anchor: "## " + calloutAnchor,
+            insertion: callout,
+          });
+
+        } else if (conflict.label === "supersession") {
+          // Build supersession annotation for the page (AC-9.3)
+          const sourceSlug = outcome.filename.replace(/\.txt$/, "");
+          const annotation = formatSupersessionAnnotation({
+            existingClaimText: conflict.storedClaim.text,
+            supersessionDate: sourceDate,
+            sourceSlug: sourceSlug,
+          });
+
+          // Place at the end of the stored claim's anchor section
+          const storedAnchorRow = db.prepare(
+            "SELECT anchor FROM claims WHERE id = ?"
+          ).get(conflict.storedClaim.id) as { anchor: string } | undefined;
+          const supersessionAnchor = storedAnchorRow?.anchor || "full-page";
+
+          phase2Edits.push({
+            page: conflict.storedClaim.page,
+            anchor: "## " + supersessionAnchor,
+            insertion: annotation,
+          });
         }
       }
 
-      // Actually, let me reconsider the flow. The contradictions table references
-      // claims(id) — both sides must be in the claims table. Source claims are
-      // unbound and NOT stored. The design says only page claims go to the DB.
-      //
-      // But the callout needs to show both claim texts. And contradictions.claim_a/claim_b
-      // reference claims(id). So we need the source claim persisted too.
-      //
-      // Looking at the schema: claims has source_id (references sources) and page.
-      // Source claims don't have a page. But the column is NOT NULL.
-      //
-      // This means: contradictions must reference PAGE claims (both sides are page claims).
-      // The flow is: source claim gets woven into the page (by Plan/Apply), then at 6.5
-      // we extract page claims — and the NEW claim (from the source) is now a page claim.
-      // The contradiction references the old page claim (A) and the new page claim (B).
-      //
-      // So the correct order is:
-      // 1. Apply writes pages (includes source material via Plan's weave edits)
-      // 2. persistPageClaims extracts claims from the pages as written
-      // 3. Match new page claims to the conflicts detected earlier
-      // 4. Store contradictions referencing both page claims
-      //
-      // For now, let's simplify: store contradictions with a simpler approach.
-      // We'll insert the source claim text as a page claim attributed to the source,
-      // then reference it. This matches the design: "page claims bound to page."
-
-      db.exec("ROLLBACK");
-    } catch {
+      db.exec("COMMIT");
+    } catch (err) {
+      // Roll back DB
       try { db.exec("ROLLBACK"); } catch { /* already rolled back */ }
-    }
 
-    // SIMPLIFIED FLOW for 6.4/6.5:
-    // 1. Persist page claims (6.5) — extracts from pages as written
-    // 2. Match detected conflicts to the newly persisted claims
-    // 3. Store contradictions/supersessions in DB and write register/annotations
-
-    if (writtenSlugs.length > 0) {
-      console.log("[elenchus] persisting page claims…");
-      await persistPageClaims(writtenSlugs, outcome.sourceId, new Date().toISOString().slice(0, 10), model);
-    }
-
-    // 6.4: Store detected conflicts
-    const contradictionIds: string[] = [];
-    if (allConflicts.length > 0) {
-      console.log("[elenchus] recording contradictions…");
-
-      try {
-        db.exec("BEGIN TRANSACTION");
-
-        for (const conflict of allConflicts) {
-          if (conflict.label === "contradiction") {
-            // Insert into contradictions table.
-            // claim_a = stored (existing) page claim id
-            // claim_b = we need a page claim for the new source material.
-            // After persist, new claims exist. Find the one matching this source claim.
-            const newClaim = db.prepare(
-              "SELECT id FROM claims WHERE page = ? AND text = ? AND superseded_at IS NULL"
-            ).get(conflict.storedClaim.page, conflict.sourceClaim.text) as { id: number } | undefined;
-
-            const claimBId = newClaim?.id ?? conflict.storedClaim.id; // fallback
-
-            const insertResult = db.prepare(
-              "INSERT INTO contradictions (claim_a, claim_b, kind, reasoning) VALUES (?, ?, ?, ?)"
-            ).run(conflict.storedClaim.id, claimBId, "contradiction", conflict.reasoning);
-
-            const cdId = formatContradictionId(Number(insertResult.lastInsertRowid));
-            contradictionIds.push(cdId);
-
-            // Determine source slug from filename
-            const sourceSlug = outcome.filename.replace(/\.txt$/, "");
-
-            // Write to register
-            const entry: ContradictionEntry = {
-              id: cdId,
-              claimA: {
-                text: conflict.storedClaim.text,
-                sourceSlug: "seed-corpus",
-                sourceDate: conflict.storedClaim.source_date,
-              },
-              claimB: {
-                text: conflict.sourceClaim.text,
-                sourceSlug: sourceSlug,
-                sourceDate: new Date().toISOString().slice(0, 10),
-              },
-              reasoning: conflict.reasoning,
-            };
-
-            addToRegister(entry);
-          } else if (conflict.label === "supersession") {
-            // Supersession: annotate the existing claim on the page
-            // The annotation goes after the section containing the existing claim.
-            // For now, we note it — full page annotation requires knowing where
-            // the claim text appears (which we can't do reliably per the spec).
-            // Store in DB for auditability.
-            const newClaim = db.prepare(
-              "SELECT id FROM claims WHERE page = ? AND text = ? AND superseded_at IS NULL"
-            ).get(conflict.storedClaim.page, conflict.sourceClaim.text) as { id: number } | undefined;
-
-            const claimBId = newClaim?.id ?? conflict.storedClaim.id;
-
-            db.prepare(
-              "INSERT INTO contradictions (claim_a, claim_b, kind, reasoning) VALUES (?, ?, ?, ?)"
-            ).run(conflict.storedClaim.id, claimBId, "supersession", conflict.reasoning);
+      // Roll back file writes — restore from cached originals
+      for (const [slug, original] of preApplyContent) {
+        const pagePath = resolve(pagesDir, `${slug}.md`);
+        try {
+          if (original === null) {
+            // Page did not exist before — delete it
+            if (existsSync(pagePath)) {
+              const { unlinkSync } = await import("node:fs");
+              unlinkSync(pagePath);
+            }
+          } else {
+            // Restore original content
+            writeFileSync(pagePath, original, "utf-8");
           }
-        }
+        } catch { /* best effort */ }
+      }
 
-        db.exec("COMMIT");
-      } catch (err) {
-        try { db.exec("ROLLBACK"); } catch { /* already rolled back */ }
-        // 6.8: Roll back file writes on DB failure.
-        // Restore pages to their pre-Apply state.
-        console.error("[elenchus] post-Apply DB write failed — rolling back file writes.");
-        for (const w of applyResult.written) {
-          try {
-            // We don't have the originals cached here, but applyEdits already
-            // succeeded, so the files are in their new state. A full rollback
-            // would require re-reading originals before Apply. For now, fail
-            // the ingest and report.
-          } catch { /* best effort */ }
+      // Rebuild index from restored state
+      syncPagesFromDisk();
+      rebuildIndex();
+
+      throw new Error(
+        `[elenchus] post-Apply transaction failed — files and DB rolled back. ` +
+        `Cause: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // Apply phase 2 — callout and annotation edits (through verify gate)
+    // -----------------------------------------------------------------------
+    if (phase2Edits.length > 0) {
+      console.log(`[elenchus] applying ${phase2Edits.length} callout/annotation edit(s)…`);
+      const phase2Result = applyEdits(phase2Edits);
+      // Merge written pages
+      for (const w of phase2Result.written) {
+        if (!writtenSlugs.includes(w.slug)) {
+          writtenSlugs.push(w.slug);
+          applyResult.written.push(w);
         }
-        throw err;
+      }
+      for (const r of phase2Result.rejected) {
+        applyResult.rejected.push(r);
+      }
+
+      // After phase 2, refresh hashes again (pages grew with callouts/annotations)
+      for (const w of phase2Result.written) {
+        const hash = getPageContentHash(w.slug);
+        refreshClaimHashes(w.slug, hash);
       }
     }
 
@@ -405,6 +463,7 @@ program
     console.log("── Summary ──");
     console.log(`  Pages woven:    ${pagesWoven}`);
     console.log(`  Pages created:  ${pagesCreated}`);
+    console.log(`  Contradictions: ${contradictionIds.length}`);
     console.log(`  Edits rejected: ${applyResult.rejected.length}`);
     console.log(`  Record:         ${recordPath}`);
   });
@@ -413,7 +472,6 @@ program
   .command("index")
   .description("Rebuild index.md from current pages.")
   .action(() => {
-    // Ensure on-disk layout and schema exist before any operation
     ensureLayout();
     ensureSchema();
 
