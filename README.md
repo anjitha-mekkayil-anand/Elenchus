@@ -181,7 +181,7 @@ Every pull request was reviewed against its diff rather than its summary. That m
 
 This is not a hypothetical user.
 
-The practice behind Elenchus is three years old — a manually maintained, LLM-written wiki of roughly 185 pages, with a weekly consistency check and a monthly sweep for contradictions between pages. The design is opinionated because running that loop by hand, without version control, taught which failures actually hurt:
+The practice behind Elenchus is a manually maintained, LLM-written wiki of roughly 188 pages, with a weekly consistency check and a monthly sweep for contradictions between pages. It has run since April 2026. The design is opinionated because running that loop by hand, without version control, taught which failures actually hurt:
 
 - **The orphan note** — a new page created for material that belonged inside one that already existed. The collection grows; the understanding does not.
 - **The silent pick** — two incompatible claims held at once, with whichever one surfaced today treated as the answer.
@@ -191,7 +191,7 @@ The monthly contradiction sweep is the specific job this automates. Done by hand
 
 ## Provenance
 
-The **practice** is three years old. The **code** is not.
+The **practice** predates the code. It has run since April 2026; the code started on 10 August 2026.
 
 No code is reused from that vault, because it is prose, not an application. First commit 10 Aug 2026, within the competition period. Stating this plainly seemed better than leaving it to be discovered.
 
