@@ -43,6 +43,8 @@ import type { ModelClient } from "./model/types.js";
 
 export interface IngestOpts {
   force?: boolean;
+  /** Override source date (ISO date string). Defaults to today. Used by tests for deterministic replay. */
+  sourceDate?: string;
 }
 
 export interface IngestResult {
@@ -90,7 +92,7 @@ export async function runIngest(
   const creates = decideResult.decisions.filter((d) => d.action === "create");
 
   // Extract source claims (6.1)
-  const sourceDate = new Date().toISOString().slice(0, 10);
+  const sourceDate = opts.sourceDate ?? new Date().toISOString().slice(0, 10);
   const sourceClaims = await withRetry(
     () => extractClaims(sourceText, outcome.filename, sourceDate, model), "extract"
   );

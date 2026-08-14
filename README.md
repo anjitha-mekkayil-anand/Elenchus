@@ -6,15 +6,17 @@
 
 Built for the Ready, Spec, Ship (Kiro) hackathon.
 
+The output is the interface. Pages are markdown on disk, readable in any editor without this application — which is also how you check that it did what it says it did.
+
 ---
 
 ## The problem
 
-Note apps and RAG pipelines do the same thing: file what you give them, search it later. Neither reads what it already holds *at the moment new material arrives*.
+A collection grows and the understanding does not.
 
-So the collection grows and the understanding does not.
+Note apps and RAG pipelines do the same thing: file what you give them, search it later. Neither reads what it already holds *at the moment new material arrives*. So two sources disagree, and nothing tells you — the system hands you whichever one it happened to retrieve, and the embedding chooses.
 
-There is a second failure, and it is the expensive one. When a system holds two claims that cannot both be true, it hands you whichever one it happened to retrieve. The embedding chooses. Nothing tells you a choice was made. A knowledge base that is confidently wrong is worse than one that is merely incomplete, because you stop checking it.
+A knowledge base that is confidently wrong is worse than one that is merely incomplete, because you stop checking it.
 
 ## What it does
 
@@ -181,11 +183,19 @@ Every pull request was reviewed against its diff rather than its summary. That m
 
 This is not a hypothetical user.
 
-The practice behind Elenchus is a manually maintained, LLM-written wiki of roughly 188 pages, with a weekly consistency check and a monthly sweep for contradictions between pages. It has run since April 2026. The design is opinionated because running that loop by hand, without version control, taught which failures actually hurt:
+The practice behind Elenchus is a manually maintained, LLM-written wiki of roughly 190 pages, with a weekly consistency check and a monthly contradiction sweep. It has run since April 2026. The design is opinionated because running that loop by hand, without version control, taught which failures actually hurt:
 
 - **The orphan note** — a new page created for material that belonged inside one that already existed. The collection grows; the understanding does not.
 - **The silent pick** — two incompatible claims held at once, with whichever one surfaced today treated as the answer.
 - **Destructive edits** — the reason the invariant is enforced by code. An integrating system that can also destroy is unusable, because you cannot check every edit.
+
+A single monthly sweep surfaced nine hard contradictions across the collection — pages that had drifted apart without anyone noticing, because nothing was reading them against each other. A fact carried for months turned out never to have happened, and was found by the collection disagreeing with itself rather than by anyone remembering better. The practice keeps a record of what it missed, not only what it caught. That half exists on purpose.
+
+This is what the application automates — the sweep that currently happens monthly, moved to the moment new material arrives, when the comparison is cheap because the new source is already in front of you.
+
+### Why this is not memory-agent work
+
+Those systems move curation to the agent: it decides what is worth keeping and nudges itself to store it. This keeps curation with the person and does something that loop has no step for — it reads what it already holds at the moment new material arrives, and when the new source disagrees with the old one it holds both with dates instead of resolving it. Persisting a new fact and noticing it contradicts a stored one are different operations, and only the first is in that loop.
 
 The monthly contradiction sweep is the specific job this automates. Done by hand it is slow, and it only finds what you thought to look for. Done at ingest, it happens at the one moment the comparison is cheap: when the new material is already in front of you.
 
@@ -199,7 +209,7 @@ No code is reused from that vault, because it is prose, not an application. Firs
 
 Named, because an unnamed cut looks like an unfinished feature:
 
-Authentication · multi-user · graph visualisation · voice input · mobile · embeddings-based retrieval · file formats beyond text, markdown and URL · reconciling a source against itself · confidence scores.
+Authentication · multi-user · graph visualisation · voice input · mobile · embeddings-based retrieval · file formats beyond text, markdown and URL · reconciling a source against itself · confidence scores · a GUI of any kind.
 
 Two of those were considered and rejected rather than skipped:
 

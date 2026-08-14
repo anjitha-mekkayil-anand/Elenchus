@@ -79,7 +79,7 @@ describe("ingest integration: contradiction reaches the page (task 10)", () => {
     // Record the pre-ingest page content
     const preIngestContent = readFileSync(resolve(tmpDir, "pages", "food-safety.md"), "utf-8");
 
-    const result = await runIngest(sourceFile, {}, replayer);
+    const result = await runIngest(sourceFile, { sourceDate: "2026-08-14" }, replayer);
 
     // The page file must contain the callout
     const pageContent = readFileSync(resolve(tmpDir, "pages", "food-safety.md"), "utf-8");

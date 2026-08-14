@@ -9,3 +9,4 @@ Bacteria multiply rapidly between 4 °C and 60 °C. Perishable food should not r
 ## Cross-Contamination
 
 Raw meat, poultry, and seafood must be stored below ready-to-eat foods. Separate cutting boards and utensils prevent transfer of pathogens like Salmonella and Campylobacter.
+
