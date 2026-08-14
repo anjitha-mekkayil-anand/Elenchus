@@ -1,0 +1,10 @@
+# Line endings are load-bearing here: file content is hashed, and those hashes
+# form part of model requests that recorded fixtures are matched against.
+# A CRLF checkout on Windows changes those bytes and breaks fixture replay.
+* text=auto eol=lf
+
+# Belt and braces for the byte-sensitive paths: never convert these at all.
+demo-pages/** -text
+examples/** -text
+fixtures/** -text
+tests/fixtures/** -text
