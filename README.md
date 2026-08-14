@@ -6,7 +6,7 @@
 
 Built for the Ready, Spec, Ship (Kiro) hackathon.
 
-The output is the interface. Pages are markdown on disk, readable in any editor without this application — which is also how you check that it did what it says it did.
+The output is plain markdown on disk. A knowledge base you will still be reading in five years cannot depend on the tool that wrote it — and a system that rewrites your pages must leave them legible to something other than itself. That is why there is no interface beyond the files: they are the interface, and they are also how you verify this application did what it says it did.
 
 ---
 
@@ -51,7 +51,7 @@ The same shape applies one level up: any pair claimed as a conflict must carry a
 
 Requires **Node 20+**. No admin rights, no global installs, no database server.
 
-**Tested on:** Linux (CI, Node 22) and the Kiro Web environment. Not yet exercised on Windows or macOS. It is plain Node with no native dependencies and no shell invocation, so no platform-specific behaviour is expected — but the honest statement is what has actually been run.
+**Tested on:** Linux (CI, Node 22) and the Kiro Web sandbox. macOS and Windows have not been exercised directly. There are no native dependencies and no shell invocations, and `.gitattributes` enforces LF checkout — but the honest statement is that the test suite has only been run on Linux.
 
 ```bash
 git clone https://github.com/anjitha-mekkayil-anand/Elenchus.git
@@ -203,6 +203,8 @@ The monthly contradiction sweep is the specific job this automates. Done by hand
 
 ## Human direction
 
+The human contribution here was mostly about restraint — what the system is forbidden to conclude. Supersession must be earned, recency never reclassifies, and the register is never auto-resolved at any quorum. Those are not features that emerge from implementation; they are decisions about what a knowledge base is allowed to do to claims it is holding for someone.
+
 - **The project itself was chosen from a menu of five candidates**, four of which were rejected. The reason this one won: documentation and application quality together are most of the rubric, so the entry that wins is the one whose hard decisions are visible in the writeup.
 - **The name.** Chosen from three, on the principle of naming the mechanism rather than a synonym for it.
 - **The load-bearing design decision — supersession must be earned.** A source claiming a change must quote the sentence stating it, and that quote is checked in code. Recency alone never reclassifies a contradiction. This was a human call about what the system is allowed to conclude, not an implementation detail.
@@ -242,6 +244,8 @@ Found while building, and left in rather than papered over:
 **Page claims carry coarse attribution.** Material woven in by an ingest is attributed to its source; content that was already there is attributed to the seed corpus. The citation left on the page by an earlier ingest is not yet read back to attribute more precisely.
 
 **Retrieval matches on titles and summaries**, so this works at the scale of hundreds of pages, not thousands. See above for why that trade was taken.
+
+**Line endings on hand-edited pages.** Page content is split on `\n` in several places (`pages.ts`, `verify.ts`, `resolve.ts`), and the content invariant compares lines. A `.gitattributes` forces LF on checkout, so a fresh clone is safe on any platform — but a page hand-edited on Windows and saved with CRLF could produce a false invariant rejection or a missed heading. Not yet handled; the fix is to normalise on read rather than at every split.
 
 ## Attribution
 
