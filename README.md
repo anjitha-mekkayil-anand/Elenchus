@@ -51,6 +51,8 @@ The same shape applies one level up: any pair claimed as a conflict must carry a
 
 Requires **Node 20+**. No admin rights, no global installs, no database server.
 
+**Tested on:** Linux (CI, Node 22) and the Kiro Web environment. Not yet exercised on Windows or macOS. It is plain Node with no native dependencies and no shell invocation, so no platform-specific behaviour is expected — but the honest statement is what has actually been run.
+
 ```bash
 git clone https://github.com/anjitha-mekkayil-anand/Elenchus.git
 cd Elenchus
@@ -198,6 +200,16 @@ This is what the application automates — the sweep that currently happens mont
 Those systems move curation to the agent: it decides what is worth keeping and nudges itself to store it. This keeps curation with the person and does something that loop has no step for — it reads what it already holds at the moment new material arrives, and when the new source disagrees with the old one it holds both with dates instead of resolving it. Persisting a new fact and noticing it contradicts a stored one are different operations, and only the first is in that loop.
 
 The monthly contradiction sweep is the specific job this automates. Done by hand it is slow, and it only finds what you thought to look for. Done at ingest, it happens at the one moment the comparison is cheap: when the new material is already in front of you.
+
+## Human direction
+
+- **The project itself was chosen from a menu of five candidates**, four of which were rejected. The reason this one won: documentation and application quality together are most of the rubric, so the entry that wins is the one whose hard decisions are visible in the writeup.
+- **The name.** Chosen from three, on the principle of naming the mechanism rather than a synonym for it.
+- **The load-bearing design decision — supersession must be earned.** A source claiming a change must quote the sentence stating it, and that quote is checked in code. Recency alone never reclassifies a contradiction. This was a human call about what the system is allowed to conclude, not an implementation detail.
+- **A demo-mode design was proposed and rejected** after reading the rules: replaying recorded responses and presenting it as the app working is exactly what the rules forbid. The fixtures were kept and relabelled as a test suite instead.
+- **Every pull request was reviewed against the diff rather than the summary**, which is how five defects were caught that the agent's own accurate-sounding reports did not surface — including a headline feature imported and never called, with a green suite of 172 tests.
+- **Two defects were found in the specification itself**, not the implementation, and the corrections were left in the repository rather than tidied away.
+- **A false claim about the project's history was caught and corrected** before submission — the README had asserted a duration that the record did not support.
 
 ## Provenance
 
