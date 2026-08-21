@@ -17,27 +17,27 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 2. Extract — claims from source material
 
-- [ ] **2.1** 🤖 `extractClaims(text, sourceId, sourceDate, model)` → array of `{ text }`. Send material to the model, get back discrete factual claims at assertion granularity. Claims are returned **unbound** — no page, no anchor, no hash — and held in memory for the Compare stage. → *AC-7.1*
-- [ ] **2.2** 🤖 Prompt construction: instruct the model to return nothing for opinion, description, instruction, question → *AC-7.3*
-- [ ] **2.3** 🔧 Unit test: a source that asserts nothing checkable produces zero claims → *AC-7.3*
+- [x] **2.1** 🤖 `extractClaims(text, sourceId, sourceDate, model)` → array of `{ text }`. Send material to the model, get back discrete factual claims at assertion granularity. Claims are returned **unbound** — no page, no anchor, no hash — and held in memory for the Compare stage. → *AC-7.1*
+- [x] **2.2** 🤖 Prompt construction: instruct the model to return nothing for opinion, description, instruction, question → *AC-7.3*
+- [x] **2.3** 🔧 Unit test: a source that asserts nothing checkable produces zero claims → *AC-7.3*
 
 ## 3. Staleness — re-extract on hash mismatch
 
-- [ ] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `content_hash` on **page claims** → *AC-7.4*
-- [ ] **3.2** 🤖 If the hash mismatches **or there are no active claims** (AC-7.7), re-extract that page's claims from the current file content, **mark the old rows superseded (`superseded_at` set to current timestamp) and insert the new ones with the current content hash**. Nothing is deleted — contradictions keep referencing superseded rows, so the foreign key never breaks. Then proceed with the comparison. → *AC-7.4, AC-7.2, AC-7.7*
-- [ ] **3.3** 🔧 Unit test: simulate a hand-edit (modify file, leave DB stale), verify re-extraction is triggered
-- [ ] **3.4** 🔧 Unit test: after a re-extraction triggered by hand-edit, a second ingest of an unrelated source does **not** trigger re-extraction on that page again → *AC-7.4*
+- [x] **3.1** 🔧 On comparison, compute current page content hash and compare to stored `content_hash` on **page claims** → *AC-7.4*
+- [x] **3.2** 🤖 If the hash mismatches **or there are no active claims** (AC-7.7), re-extract that page's claims from the current file content, **mark the old rows superseded (`superseded_at` set to current timestamp) and insert the new ones with the current content hash**. Nothing is deleted — contradictions keep referencing superseded rows, so the foreign key never breaks. Then proceed with the comparison. → *AC-7.4, AC-7.2, AC-7.7*
+- [x] **3.3** 🔧 Unit test: simulate a hand-edit (modify file, leave DB stale), verify re-extraction is triggered
+- [x] **3.4** 🔧 Unit test: after a re-extraction triggered by hand-edit, a second ingest of an unrelated source does **not** trigger re-extraction on that page again → *AC-7.4*
 
 ## 4. Compare — source claims × stored claims
 
-- [ ] **4.1** 🤖 `compareClaims(sourceClaims, storedClaims, sourceText, model)` → array of classified pairs. Each pair gets one label: `neither`, `supersession`, `contradiction` → *AC-8.1, AC-8.2, AC-8.3, AC-8.4*
-- [ ] **4.2** 🤖 Prompt construction: ask for the falsifier first (AC-8.7 gate), then event check (AC-8.3/AC-8.5 gate), then default to contradiction (AC-8.6) → *AC-8.5, AC-8.6, AC-8.7*
-- [ ] **4.3** 🔧 Require and store reasoning for every contradiction or supersession → *AC-8.8*
-- [ ] **4.4** 🔧 Pairs classified as `neither` are not stored (AC-8.4) unless the classifier returned a conflict with no falsifier (AC-8.7 — record as rejected pair)
-- [ ] **4.5** 🔧 Comparison bounded by the pages this ingest is writing to — NOT the retrieved candidate set, NOT the whole base → *NF-5*
-- [ ] **4.6** 🔧 Unit test (ReplayClient): a pair that is a refinement ("~50" vs "53") returns `neither` → *NF-8*
-- [ ] **4.7** 🔧 Unit test (ReplayClient): a pair with a stated event returns `supersession` → *AC-8.3*
-- [ ] **4.8** 🔧 Unit test (ReplayClient): a genuine conflict with no event returns `contradiction` → *AC-8.2*
+- [x] **4.1** 🤖 `compareClaims(sourceClaims, storedClaims, sourceText, model)` → array of classified pairs. Each pair gets one label: `neither`, `supersession`, `contradiction` → *AC-8.1, AC-8.2, AC-8.3, AC-8.4*
+- [x] **4.2** 🤖 Prompt construction: ask for the falsifier first (AC-8.7 gate), then event check (AC-8.3/AC-8.5 gate), then default to contradiction (AC-8.6) → *AC-8.5, AC-8.6, AC-8.7*
+- [x] **4.3** 🔧 Require and store reasoning for every contradiction or supersession → *AC-8.8*
+- [x] **4.4** 🔧 Pairs classified as `neither` are not stored (AC-8.4) unless the classifier returned a conflict with no falsifier (AC-8.7 — record as rejected pair)
+- [x] **4.5** 🔧 Comparison bounded by the pages this ingest is writing to — NOT the retrieved candidate set, NOT the whole base → *NF-5*
+- [x] **4.6** 🔧 Unit test (ReplayClient): a pair that is a refinement ("~50" vs "53") returns `neither` → *NF-8*
+- [x] **4.7** 🔧 Unit test (ReplayClient): a pair with a stated event returns `supersession` → *AC-8.3*
+- [x] **4.8** 🔧 Unit test (ReplayClient): a genuine conflict with no event returns `contradiction` → *AC-8.2*
 
 ## 5. Represent — on-page markers and register
 
@@ -51,15 +51,15 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 6. Wire into the pipeline
 
-- [ ] **6.1** 🔧 Insert Extract stage between Decide and Plan in `cli.ts`: extract source claims (unbound) after decide, before plan → *AC-7.1, design.md pipeline*
-- [ ] **6.2** 🔧 Insert Compare stage between Extract and Plan: compare source claims against stored **page** claims on target pages → *AC-8.1, design.md pipeline*
-- [ ] **6.3** 🔧 Modify Plan stage: when contradictions or supersessions are detected, include callout/annotation edits in the planned edits alongside weave edits → *AC-9.1, AC-9.3, AC-9.5*
-- [ ] **6.4** 🔧 After Apply, write register entries and store contradictions in SQLite → *AC-9.4*
-- [ ] **6.5** 🔧 After Apply, persist **page claims** bound to page slug, anchor, and the page's content hash **as written**. These are the rows future ingests compare against. → *AC-7.2, design.md stage [6a]*
-- [ ] **6.6** 🔧 Extend the ingest record to name each detected pair with classification and reasoning → *AC-11.1*
-- [ ] **6.7** 🔧 Extend the ingest record: when no contradictions detected, state explicitly that claims were compared and none conflicted → *AC-11.2*
-- [ ] **6.8** 🔧 Roll back the whole ingest if register write fails after pages are written → *AC-4.5, design.md failure handling*
-- [ ] **6.9** 🔧 Integration test: run the **actual apply path** for a supersession edit and assert `isSubsequence` passes on the written result. Section 5's test builds post-edit content by hand; this proves the real production path composes with the invariant. → *AC-9.3, verify gate*
+- [x] **6.1** 🔧 Insert Extract stage between Decide and Plan in `cli.ts`: extract source claims (unbound) after decide, before plan → *AC-7.1, design.md pipeline*
+- [x] **6.2** 🔧 Insert Compare stage between Extract and Plan: compare source claims against stored **page** claims on target pages → *AC-8.1, design.md pipeline*
+- [x] **6.3** 🔧 Modify Plan stage: when contradictions or supersessions are detected, include callout/annotation edits in the planned edits alongside weave edits → *AC-9.1, AC-9.3, AC-9.5*
+- [x] **6.4** 🔧 After Apply, write register entries and store contradictions in SQLite → *AC-9.4*
+- [x] **6.5** 🔧 After Apply, persist **page claims** bound to page slug, anchor, and the page's content hash **as written**. These are the rows future ingests compare against. → *AC-7.2, design.md stage [6a]*
+- [x] **6.6** 🔧 Extend the ingest record to name each detected pair with classification and reasoning → *AC-11.1*
+- [x] **6.7** 🔧 Extend the ingest record: when no contradictions detected, state explicitly that claims were compared and none conflicted → *AC-11.2*
+- [x] **6.8** 🔧 Roll back the whole ingest if register write fails after pages are written → *AC-4.5, design.md failure handling*
+- [x] **6.9** 🔧 Integration test: run the **actual apply path** for a supersession edit and assert `isSubsequence` passes on the written result. Section 5's test builds post-edit content by hand; this proves the real production path composes with the invariant. → *AC-9.3, verify gate*
 
 ## 7. Resolution
 
@@ -73,13 +73,13 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 ## 8. Reopen
 
-- [ ] **8.1** 🔧 During Compare: if a new claim contradicts a previously-resolved claim, reopen the entry rather than creating a new one → *AC-10.4*
-- [ ] **8.2** 🔧 On reopen: surface the prior resolution and its reason in the callout and the register → *AC-10.4*
-- [ ] **8.3** 🤖 Unit test (ReplayClient): ingest source that contradicts a resolved claim → entry reopened, prior reason surfaced → *AC-10.4*
+- [x] **8.1** 🔧 During Compare: if a new claim contradicts a previously-resolved claim, reopen the entry rather than creating a new one → *AC-10.4*
+- [x] **8.2** 🔧 On reopen: surface the prior resolution and its reason in the callout and the register → *AC-10.4*
+- [x] **8.3** 🤖 Unit test (ReplayClient): ingest source that contradicts a resolved claim → entry reopened, prior reason surfaced → *AC-10.4*
 
 ## 9. Auto-resolution prohibition
 
-- [ ] **9.1** 🔧 Unit test: ingest two sources that agree with side B of an open contradiction → contradiction remains open, status unchanged → *AC-10.1*
+- [x] **9.1** 🔧 Unit test: ingest two sources that agree with side B of an open contradiction → contradiction remains open, status unchanged → *AC-10.1*
 
 > **This test exists because it is the failure mode. Do not pass it by not checking.**
 
@@ -87,12 +87,12 @@ Tasks marked 🤖 require real model calls (RecordingClient wraps them for fixtu
 
 > The real runs in 10.2–10.5 must go through the **built CLI** (`npm run build` then `npm start` / `node dist/cli.js`), not `npm run dev`. Tsx and vitest both provide CJS interop that plain Node does not, so a dev-path run does not validate the path a judge takes — and the demo corpus should be generated by the shipped code, not by a more permissive harness.
 
-- [ ] **10.1** 🤖 Add a demo source to `fixtures/` that contradicts an existing seeded page (e.g. a food-safety claim)
-- [ ] **10.2** 🤖 Ingest it: verify contradiction detected, callout written, register updated
-- [ ] **10.3** 🤖 Add a demo source with a supersession (e.g. a rescheduled date)
-- [ ] **10.4** 🤖 Ingest it: verify supersession annotation written, no register entry
-- [ ] **10.5** 🤖 Add a refinement source ("~50" → "53"): verify classified as `neither`, no marker written → *NF-8*
-- [ ] **10.6** 🤖 Record all runs through RecordingClient — these are the demo corpus for spec 4
+- [x] **10.1** 🤖 Add a demo source to `fixtures/` that contradicts an existing seeded page (e.g. a food-safety claim)
+- [x] **10.2** 🤖 Ingest it: verify contradiction detected, callout written, register updated
+- [x] **10.3** 🤖 Add a demo source with a supersession (e.g. a rescheduled date)
+- [x] **10.4** 🤖 Ingest it: verify supersession annotation written, no register entry
+- [x] **10.5** 🤖 Add a refinement source ("~50" → "53"): verify classified as `neither`, no marker written → *NF-8*
+- [x] **10.6** 🤖 Record all runs through RecordingClient — these are the demo corpus for spec 4
 
 ---
 
